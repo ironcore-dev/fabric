@@ -1,0 +1,14 @@
+name: lab
+topology:
+  nodes:
+    spine-1:
+      kind: sonic-vs
+      image: docker-sonic-vs:latest
+    leaf-1:
+      kind: sonic-vs
+      image: docker-sonic-vs:latest
+
+  links:
+  - endpoints:
+    - spine-1:eth1
+    - leaf-1:eth1

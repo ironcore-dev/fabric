@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  pull_request:
+    types: [assigned, opened, synchronize, reopened]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install lldpd
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lldpd
+
+      - name: Start lldpd
+        run: |
+          sudo systemctl start lldpd
+
+      - name: Clone the code
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Running Tests
+        run: |
+          sudo --preserve-env=HOME,GOROOT,GOPATH,PATH make test-only
+
+  test-alerts:
+    name: Test Prometheus alert rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Check alert rules syntax
+        run: make check-alerts
+
+      - name: Run alert rule tests
+        run: make test-alerts
