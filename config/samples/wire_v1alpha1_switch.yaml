@@ -1,0 +1,9 @@
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Switch
+metadata:
+  labels:
+    app.kubernetes.io/name: wire
+    app.kubernetes.io/managed-by: kustomize
+  name: switch-sample
+spec:
+  # TODO(user): Add fields here

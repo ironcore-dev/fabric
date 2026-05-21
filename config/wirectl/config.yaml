@@ -1,0 +1,19 @@
+topology:
+  nodes:
+    spine-0:
+      kind: Device
+      interfaces:
+        if0: {}
+    leaf-0:
+      kind: Device
+      interfaces:
+        if0: {}
+        if1: {}
+    host-0:
+      kind: Server
+      interfaces:
+        if0: {}
+
+  links:
+  - endpoints: ["spine-0:if0", "leaf-0:if0"]
+  - endpoints: ["leaf-0:if1", "host-0:if0"]

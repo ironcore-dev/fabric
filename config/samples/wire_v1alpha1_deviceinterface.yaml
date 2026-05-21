@@ -1,0 +1,9 @@
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: DeviceInterface
+metadata:
+  labels:
+    app.kubernetes.io/name: wire
+    app.kubernetes.io/managed-by: kustomize
+  name: deviceinterface-sample
+spec:
+  # TODO(user): Add fields here

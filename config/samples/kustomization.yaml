@@ -1,0 +1,10 @@
+## Append samples of your project ##
+resources:
+- wire_v1alpha1_device.yaml
+- wire_v1alpha1_deviceinterface.yaml
+- wire_v1alpha1_server.yaml
+- wire_v1alpha1_serverinterface.yaml
+- wire_v1alpha1_link.yaml
+- wire_v1alpha1_switch.yaml
+- wire_v1alpha1_host.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,46 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - wire.ironcore.dev
+  resources:
+  - deviceinterfaces
+  - devices
+  verbs:
+  - apply
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - wire.ironcore.dev
+  resources:
+  - deviceinterfaces/status
+  - devices/status
+  - switches/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - wire.ironcore.dev
+  resources:
+  - switches
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - wire.ironcore.dev
+  resources:
+  - switches/finalizers
+  verbs:
+  - patch
+  - update
