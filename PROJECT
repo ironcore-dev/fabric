@@ -13,35 +13,14 @@ resources:
     crdVersion: v1
   domain: ironcore.dev
   group: wire
-  kind: Device
+  kind: Node
   path: github.com/ironcore-dev/wire/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
   domain: ironcore.dev
   group: wire
-  kind: DeviceInterface
-  path: github.com/ironcore-dev/wire/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
-  domain: ironcore.dev
-  group: wire
-  kind: Server
-  path: github.com/ironcore-dev/wire/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
-  domain: ironcore.dev
-  group: wire
-  kind: ServerInterface
-  path: github.com/ironcore-dev/wire/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
-  domain: ironcore.dev
-  group: wire
-  kind: Link
+  kind: Interface
   path: github.com/ironcore-dev/wire/api/v1alpha1
   version: v1alpha1
 - api:
@@ -49,15 +28,7 @@ resources:
     namespaced: true
   domain: ironcore.dev
   group: wire
-  kind: Switch
-  path: github.com/ironcore-dev/wire/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
-    namespaced: true
-  domain: ironcore.dev
-  group: wire
-  kind: Host
+  kind: Cell
   path: github.com/ironcore-dev/wire/api/v1alpha1
   version: v1alpha1
 version: "3"

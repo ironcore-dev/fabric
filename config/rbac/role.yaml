@@ -7,8 +7,35 @@ rules:
 - apiGroups:
   - wire.ironcore.dev
   resources:
-  - deviceinterfaces
-  - devices
+  - cells
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - wire.ironcore.dev
+  resources:
+  - cells/finalizers
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - wire.ironcore.dev
+  resources:
+  - cells/status
+  - interfaces/status
+  - nodes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - wire.ironcore.dev
+  resources:
+  - interfaces
+  - nodes
   verbs:
   - apply
   - create
@@ -17,30 +44,3 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - wire.ironcore.dev
-  resources:
-  - deviceinterfaces/status
-  - devices/status
-  - switches/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - wire.ironcore.dev
-  resources:
-  - switches
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - wire.ironcore.dev
-  resources:
-  - switches/finalizers
-  verbs:
-  - patch
-  - update

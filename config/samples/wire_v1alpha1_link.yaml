@@ -1,9 +1,0 @@
-apiVersion: wire.ironcore.dev/v1alpha1
-kind: Link
-metadata:
-  labels:
-    app.kubernetes.io/name: wire
-    app.kubernetes.io/managed-by: kustomize
-  name: link-sample
-spec:
-  # TODO(user): Add fields here

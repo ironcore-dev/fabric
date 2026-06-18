@@ -1,21 +1,21 @@
 # wire
 
-`wire` enables declarative configuration of network devices.
+`wire` enables declarative configuration of network nodes.
 
 ## Description
 
-`wire` models unconfigured switches as a `Device`. A `Device`
-can have multiple `DeviceInterface`s. To actually make a
-`Device` configured, a `Switch` resource is created referencing
-the `Device` to configure (think of `Node` <-> `Pod` binding
-with `Device` being a `Node` and `Pod` being a `Switch`
-resource, just that only a single `Switch` can be on a
-`Device` at a time).
+`wire` models unconfigured nodes as a `Node`. A `Node`
+can have multiple `Interface`s. To actually make a
+`Node` configured, a `Cell` resource is created referencing
+the `Node` to configure (think of k8s' `Node` <-> `Pod` binding
+with `Node` being a k8s `Node` and `Pod` being a `Cell`
+resource, just that only a single `Cell` can be on a
+`Node` at a time).
 
-Since configuring a `Device` is heavily vendor-dependent, the
-[`deviceruntime/Runtime`](deviceruntime/deviceruntime.go) interface
+Since configuring a `Node` is heavily vendor-dependent, the
+[`cellruntime/Runtime`](cellruntime/cellruntime.go) interface
 allows a provider to implement the functionality required to
-inregrate with `wire`.
+integrate with `wire`.
 
 ## Getting Started
 

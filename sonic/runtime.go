@@ -6,7 +6,7 @@ package sonic
 import (
 	"context"
 
-	"github.com/ironcore-dev/wire/deviceruntime"
+	"github.com/ironcore-dev/wire/cellruntime"
 )
 
 type Runtime struct {
@@ -21,17 +21,17 @@ func (r *Runtime) ProviderName() string {
 	panic("implement me")
 }
 
-func (r *Runtime) DeviceID(ctx context.Context, device string) (string, error) {
+func (r *Runtime) NodeID(ctx context.Context, node string) (string, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *Runtime) ApplySwitch(ctx context.Context, device string, cfg *deviceruntime.SwitchConfig) error {
+func (r *Runtime) ApplyCell(ctx context.Context, node string, cfg *cellruntime.CellConfig) error {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *Runtime) DeleteSwitch(ctx context.Context, device string) error {
+func (r *Runtime) DeleteCell(ctx context.Context, node string) error {
 	// TODO implement me
 	panic("implement me")
 }
@@ -41,7 +41,7 @@ func (r *Runtime) InterfaceID(ctx context.Context, iface string) (string, error)
 	panic("implement me")
 }
 
-func (r *Runtime) InterfaceState(ctx context.Context, iface string) (*deviceruntime.InterfaceState, error) {
+func (r *Runtime) InterfaceState(ctx context.Context, iface string) (*cellruntime.InterfaceState, error) {
 	// TODO implement me
 	panic("implement me")
 }

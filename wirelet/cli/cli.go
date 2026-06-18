@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	wirev1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/deviceruntime"
+	"github.com/ironcore-dev/wire/cellruntime"
 	internalctrl "github.com/ironcore-dev/wire/wirelet/internal/controller"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,16 +67,16 @@ func (o *Flags) AddFlags(fs *pflag.FlagSet) {
 type Options struct {
 	*Flags
 
-	LeaderElectionID         string
-	DevicePredicate          func(*wirev1alpha1.Device) bool
-	DeviceInterfacePredicate func(*wirev1alpha1.DeviceInterface) bool
+	LeaderElectionID   string
+	NodePredicate      func(*wirev1alpha1.Node) bool
+	InterfacePredicate func(*wirev1alpha1.Interface) bool
 }
 
-type InitRuntimeFunc func() (rt deviceruntime.Runtime)
+type InitRuntimeFunc func() (rt cellruntime.Runtime)
 
 func Run(
 	ctx context.Context,
-	prov deviceruntime.Runtime,
+	prov cellruntime.Runtime,
 	opts Options,
 ) error {
 	setupLog := ctrl.Log.WithName("setup")
@@ -175,31 +175,31 @@ func Run(
 		return fmt.Errorf("create new manager: %w", err)
 	}
 
-	if err := (&internalctrl.DeviceReconciler{
-		Client:          mgr.GetClient(),
-		APIReader:       mgr.GetAPIReader(),
-		DeviceRuntime:   prov,
-		DevicePredicate: opts.DevicePredicate,
-		AbsenceCache:    lru.New(500),
+	if err := (&internalctrl.NodeReconciler{
+		Client:        mgr.GetClient(),
+		APIReader:     mgr.GetAPIReader(),
+		CellRuntime:   prov,
+		NodePredicate: opts.NodePredicate,
+		AbsenceCache:  lru.New(500),
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("setting up device reconciler: %w", err)
+		return fmt.Errorf("setting up node controller: %w", err)
 	}
 
-	if err := (&internalctrl.DeviceInterfaceReconciler{
-		Client:                   mgr.GetClient(),
-		DeviceRuntime:            prov,
-		DeviceInterfacePredicate: opts.DeviceInterfacePredicate,
+	if err := (&internalctrl.InterfaceReconciler{
+		Client:             mgr.GetClient(),
+		CellRuntime:        prov,
+		InterfacePredicate: opts.InterfacePredicate,
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("setting up device interface controller: %w", err)
+		return fmt.Errorf("setting up interface controller: %w", err)
 	}
 
-	if err := (&internalctrl.SwitchReconciler{
-		Client:          mgr.GetClient(),
-		EventRecorder:   mgr.GetEventRecorder("switch-controller"),
-		DevicePredicate: opts.DevicePredicate,
-		DeviceRuntime:   prov,
+	if err := (&internalctrl.CellReconciler{
+		Client:        mgr.GetClient(),
+		EventRecorder: mgr.GetEventRecorder("cell-controller"),
+		NodePredicate: opts.NodePredicate,
+		CellRuntime:   prov,
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("setting up switch controller: %w", err)
+		return fmt.Errorf("setting up cell controller: %w", err)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

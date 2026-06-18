@@ -22,25 +22,13 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the wire itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- host_admin_role.yaml
-- host_editor_role.yaml
-- host_viewer_role.yaml
-- switch_admin_role.yaml
-- switch_editor_role.yaml
-- switch_viewer_role.yaml
-- link_admin_role.yaml
-- link_editor_role.yaml
-- link_viewer_role.yaml
-- serverinterface_admin_role.yaml
-- serverinterface_editor_role.yaml
-- serverinterface_viewer_role.yaml
-- server_admin_role.yaml
-- server_editor_role.yaml
-- server_viewer_role.yaml
-- deviceinterface_admin_role.yaml
-- deviceinterface_editor_role.yaml
-- deviceinterface_viewer_role.yaml
-- device_admin_role.yaml
-- device_editor_role.yaml
-- device_viewer_role.yaml
+- cell_admin_role.yaml
+- cell_editor_role.yaml
+- cell_viewer_role.yaml
+- node_admin_role.yaml
+- node_editor_role.yaml
+- node_viewer_role.yaml
+- interface_admin_role.yaml
+- interface_editor_role.yaml
+- interface_viewer_role.yaml
 

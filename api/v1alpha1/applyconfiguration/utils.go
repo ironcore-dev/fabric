@@ -19,66 +19,30 @@ import (
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
 	// Group=wire.ironcore.dev, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithKind("Device"):
-		return &apiv1alpha1.DeviceApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DeviceInterface"):
-		return &apiv1alpha1.DeviceInterfaceApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DeviceInterfaceSpec"):
-		return &apiv1alpha1.DeviceInterfaceSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DeviceInterfaceStatus"):
-		return &apiv1alpha1.DeviceInterfaceStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DeviceSpec"):
-		return &apiv1alpha1.DeviceSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DeviceStatus"):
-		return &apiv1alpha1.DeviceStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("Host"):
-		return &apiv1alpha1.HostApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("HostBGP"):
-		return &apiv1alpha1.HostBGPApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("HostBGPNeighbor"):
-		return &apiv1alpha1.HostBGPNeighborApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("HostBGPPeerGroup"):
-		return &apiv1alpha1.HostBGPPeerGroupApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("HostSpec"):
-		return &apiv1alpha1.HostSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("HostStatus"):
-		return &apiv1alpha1.HostStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("Link"):
-		return &apiv1alpha1.LinkApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("LinkEndpoint"):
-		return &apiv1alpha1.LinkEndpointApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Cell"):
+		return &apiv1alpha1.CellApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CellSpec"):
+		return &apiv1alpha1.CellSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CellStatus"):
+		return &apiv1alpha1.CellStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Interface"):
+		return &apiv1alpha1.InterfaceApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("InterfaceSpec"):
+		return &apiv1alpha1.InterfaceSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("InterfaceStatus"):
+		return &apiv1alpha1.InterfaceStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("LocalObjectReference"):
 		return &apiv1alpha1.LocalObjectReferenceApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NamespacedUIDReference"):
 		return &apiv1alpha1.NamespacedUIDReferenceApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("Server"):
-		return &apiv1alpha1.ServerApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ServerInterface"):
-		return &apiv1alpha1.ServerInterfaceApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ServerInterfaceSpec"):
-		return &apiv1alpha1.ServerInterfaceSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ServerInterfaceStatus"):
-		return &apiv1alpha1.ServerInterfaceStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ServerSpec"):
-		return &apiv1alpha1.ServerSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ServerStatus"):
-		return &apiv1alpha1.ServerStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("Switch"):
-		return &apiv1alpha1.SwitchApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("SwitchBGP"):
-		return &apiv1alpha1.SwitchBGPApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("SwitchBGPNeighbor"):
-		return &apiv1alpha1.SwitchBGPNeighborApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("SwitchBGPPeerGroup"):
-		return &apiv1alpha1.SwitchBGPPeerGroupApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("SwitchSpec"):
-		return &apiv1alpha1.SwitchSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("SwitchStatus"):
-		return &apiv1alpha1.SwitchStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("SwitchVLAN"):
-		return &apiv1alpha1.SwitchVLANApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("SwitchVLANMember"):
-		return &apiv1alpha1.SwitchVLANMemberApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Node"):
+		return &apiv1alpha1.NodeApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeSpec"):
+		return &apiv1alpha1.NodeSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeStatus"):
+		return &apiv1alpha1.NodeStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Peer"):
+		return &apiv1alpha1.PeerApplyConfiguration{}
 
 	}
 	return nil

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/ironcore-dev/wire/api/v1alpha1"
-	deviceruntimetesting "github.com/ironcore-dev/wire/deviceruntime/testing"
+	cellruntimetesting "github.com/ironcore-dev/wire/cellruntime/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
@@ -42,7 +42,7 @@ var (
 	cfg       *rest.Config
 	k8sClient client.Client
 
-	fakeDeviceRuntime *deviceruntimetesting.FakeDeviceRuntime
+	fakeCellRuntime *cellruntimetesting.FakeCellRuntime
 )
 
 func init() {
@@ -117,26 +117,26 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	fakeDeviceRuntime = deviceruntimetesting.NewFakeDeviceRuntime()
+	fakeCellRuntime = cellruntimetesting.NewFakeCellRuntime()
 
-	err = (&DeviceReconciler{
-		Client:        k8sManager.GetClient(),
-		APIReader:     k8sManager.GetAPIReader(),
-		DeviceRuntime: fakeDeviceRuntime,
-		AbsenceCache:  lru.New(100),
+	err = (&NodeReconciler{
+		Client:       k8sManager.GetClient(),
+		APIReader:    k8sManager.GetAPIReader(),
+		CellRuntime:  fakeCellRuntime,
+		AbsenceCache: lru.New(100),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&SwitchReconciler{
+	err = (&CellReconciler{
 		Client:        k8sManager.GetClient(),
 		EventRecorder: &events.FakeRecorder{},
-		DeviceRuntime: fakeDeviceRuntime,
+		CellRuntime:   fakeCellRuntime,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&DeviceInterfaceReconciler{
-		Client:        k8sManager.GetClient(),
-		DeviceRuntime: fakeDeviceRuntime,
+	err = (&InterfaceReconciler{
+		Client:      k8sManager.GetClient(),
+		CellRuntime: fakeCellRuntime,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

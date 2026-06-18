@@ -21,7 +21,7 @@ func main() {
 	var interfaces []string
 
 	flags.AddFlags(pflag.CommandLine)
-	pflag.StringVar(&name, "name", name, "Name of the device")
+	pflag.StringVar(&name, "name", name, "Name of the node")
 	pflag.StringSliceVarP(&interfaces, "interface", "I", interfaces, "Names of the interfaces to reconcile")
 
 	pflag.Parse()
@@ -44,10 +44,10 @@ func main() {
 
 	if err := cli.Run(ctrl.SetupSignalHandler(), prov, cli.Options{
 		Flags: &flags,
-		DevicePredicate: func(device *v1alpha1.Device) bool {
-			return device.Name == name
+		NodePredicate: func(node *v1alpha1.Node) bool {
+			return node.Name == name
 		},
-		DeviceInterfacePredicate: func(iface *v1alpha1.DeviceInterface) bool {
+		InterfacePredicate: func(iface *v1alpha1.Interface) bool {
 			return interfaceSet.Has(iface.Name)
 		},
 	}); err != nil {
