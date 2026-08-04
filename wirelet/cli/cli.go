@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"time"
 
 	wirev1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1"
 	"github.com/ironcore-dev/wire/cellruntime"
@@ -176,11 +177,12 @@ func Run(
 	}
 
 	if err := (&internalctrl.NodeReconciler{
-		Client:        mgr.GetClient(),
-		APIReader:     mgr.GetAPIReader(),
-		CellRuntime:   prov,
-		NodePredicate: opts.NodePredicate,
-		AbsenceCache:  lru.New(500),
+		Client:                           mgr.GetClient(),
+		APIReader:                        mgr.GetAPIReader(),
+		CellRuntime:                      prov,
+		NodePredicate:                    opts.NodePredicate,
+		AbsenceCache:                     lru.New(500),
+		CellRuntimePollImmediateInterval: 50 * time.Millisecond,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("setting up node controller: %w", err)
 	}
@@ -194,10 +196,12 @@ func Run(
 	}
 
 	if err := (&internalctrl.CellReconciler{
-		Client:        mgr.GetClient(),
-		EventRecorder: mgr.GetEventRecorder("cell-controller"),
-		NodePredicate: opts.NodePredicate,
-		CellRuntime:   prov,
+		Client:                           mgr.GetClient(),
+		EventRecorder:                    mgr.GetEventRecorder("cell-controller"),
+		NodePredicate:                    opts.NodePredicate,
+		CellRuntime:                      prov,
+		CellRuntimePollInterval:          1 * time.Minute,
+		CellRuntimePollImmediateInterval: 50 * time.Millisecond,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("setting up cell controller: %w", err)
 	}

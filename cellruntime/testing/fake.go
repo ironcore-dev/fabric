@@ -15,8 +15,13 @@ const ProviderName = "fake"
 
 type FakeCellRuntime struct {
 	sync.RWMutex
-	Cells           map[string]*cellruntime.CellConfig
+	Cells           map[string]*FakeCell
 	InterfaceStates map[string]bool
+}
+
+type FakeCell struct {
+	Config *cellruntime.CellConfig
+	Status *cellruntime.CellStatus
 }
 
 var _ cellruntime.Runtime = (*FakeCellRuntime)(nil)
@@ -42,9 +47,14 @@ func (r *FakeCellRuntime) ApplyCell(ctx context.Context, node string, cfg *cellr
 	defer r.Unlock()
 
 	if r.Cells == nil {
-		r.Cells = make(map[string]*cellruntime.CellConfig)
+		r.Cells = make(map[string]*FakeCell)
 	}
-	r.Cells[node] = cfg
+	r.Cells[node] = &FakeCell{
+		Config: cfg,
+		Status: &cellruntime.CellStatus{
+			Phase: cellruntime.CellPhaseCreated,
+		},
+	}
 	return nil
 }
 
@@ -52,8 +62,24 @@ func (r *FakeCellRuntime) DeleteCell(ctx context.Context, node string) error {
 	r.Lock()
 	defer r.Unlock()
 
+	_, ok := r.Cells[node]
+	if !ok {
+		return fmt.Errorf("cell %s %w", node, cellruntime.ErrNotFound)
+	}
 	delete(r.Cells, node)
 	return nil
+}
+
+func (r *FakeCellRuntime) CellStatus(ctx context.Context, node string) (*cellruntime.CellStatus, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	cell, ok := r.Cells[node]
+	if !ok {
+		return nil, fmt.Errorf("cell %s %w", node, cellruntime.ErrNotFound)
+	}
+
+	return cell.Status, nil
 }
 
 func (r *FakeCellRuntime) InterfaceState(ctx context.Context, iface string) (*cellruntime.InterfaceState, error) {
@@ -62,7 +88,7 @@ func (r *FakeCellRuntime) InterfaceState(ctx context.Context, iface string) (*ce
 
 	state, ok := r.InterfaceStates[iface]
 	if !ok {
-		return nil, fmt.Errorf("no such interface: %s", iface)
+		return nil, fmt.Errorf("interface %s %w", iface, cellruntime.ErrNotFound)
 	}
 	return &cellruntime.InterfaceState{
 		Up: state,
@@ -72,6 +98,10 @@ func (r *FakeCellRuntime) InterfaceState(ctx context.Context, iface string) (*ce
 func (r *FakeCellRuntime) SetInterfaceAdminState(ctx context.Context, handle string, up bool) error {
 	r.Lock()
 	defer r.Unlock()
+
+	if _, ok := r.InterfaceStates[handle]; !ok {
+		return fmt.Errorf("interface %s %w", handle, cellruntime.ErrNotFound)
+	}
 	r.InterfaceStates[handle] = up
 	return nil
 }

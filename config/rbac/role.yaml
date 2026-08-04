@@ -8,6 +8,7 @@ rules:
   - wire.ironcore.dev
   resources:
   - cells
+  - nodes
   verbs:
   - get
   - list
@@ -35,12 +36,7 @@ rules:
   - wire.ironcore.dev
   resources:
   - interfaces
-  - nodes
   verbs:
-  - apply
-  - create
   - get
   - list
-  - patch
-  - update
   - watch

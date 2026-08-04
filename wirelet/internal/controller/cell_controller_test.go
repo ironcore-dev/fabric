@@ -80,10 +80,10 @@ var _ = Describe("CellController", func() {
 			return client.IgnoreNotFound(k8sClient.Delete(ctx, cell))
 		})
 
-		By("waiting for the cell to be active & the runtime to be configured")
+		By("waiting for the cell to be pending and present in the runtime")
 		Eventually(func(g Gomega) {
 			g.Expect(k8sClient.Get(ctx, cellKey, cell)).To(Succeed())
-			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellActive))
+			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellPending))
 			g.Expect(controllerutil.ContainsFinalizer(cell, NodeFinalizer(node.Name))).To(BeTrue())
 
 			fakeCellRuntime.RLock()
@@ -116,7 +116,21 @@ var _ = Describe("CellController", func() {
 				},
 			}
 
-			g.Expect(fakeCellRuntime.Cells[node.Name]).To(Equal(desiredCfg))
+			g.Expect(fakeCellRuntime.Cells[node.Name]).To(HaveField("Config", desiredCfg))
+		}).To(Succeed())
+
+		By("setting the fake cell status to active")
+		func() {
+			fakeCellRuntime.Lock()
+			defer fakeCellRuntime.Unlock()
+
+			fakeCellRuntime.Cells[node.Name].Status.Phase = cellruntime.CellPhaseActive
+		}()
+
+		By("waiting for the cell to be active")
+		Eventually(func(g Gomega) {
+			g.Expect(k8sClient.Get(ctx, cellKey, cell)).To(Succeed())
+			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellActive))
 		}).To(Succeed())
 
 		By("deleting the cell")

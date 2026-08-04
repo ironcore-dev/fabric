@@ -5,7 +5,9 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ironcore-dev/wire/api/v1alpha1"
 	"github.com/ironcore-dev/wire/cellruntime"
@@ -21,10 +23,11 @@ import (
 
 type NodeReconciler struct {
 	client.Client
-	APIReader     client.Reader
-	CellRuntime   cellruntime.Runtime
-	NodePredicate func(*v1alpha1.Node) bool
-	AbsenceCache  *lru.Cache
+	APIReader                        client.Reader
+	CellRuntime                      cellruntime.Runtime
+	NodePredicate                    func(*v1alpha1.Node) bool
+	AbsenceCache                     *lru.Cache
+	CellRuntimePollImmediateInterval time.Duration
 }
 
 // +kubebuilder:rbac:groups=wire.ironcore.dev,resources=nodes,verbs=get;list;watch;update;patch
@@ -73,11 +76,16 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	log.V(1).Info("Cell does not exist, deleting runtime cell (if any)")
 	if err := r.CellRuntime.DeleteCell(ctx, node.Name); err != nil {
-		return ctrl.Result{}, fmt.Errorf("deleting runtime cell %s: %w", node.Name, err)
+		if !errors.Is(err, cellruntime.ErrNotFound) {
+			return ctrl.Result{}, fmt.Errorf("deleting runtime cell %s: %w", node.Name, err)
+		}
+
+		log.V(1).Info("No runtime cell exists, releasing node")
+		return ctrl.Result{}, r.releaseNode(ctx, node)
 	}
 
-	log.V(1).Info("Releasing node")
-	return ctrl.Result{}, r.releaseNode(ctx, node)
+	log.V(1).Info("Issued runtime cell deletion")
+	return ctrl.Result{RequeueAfter: r.CellRuntimePollImmediateInterval}, nil
 }
 
 func (r *NodeReconciler) releaseNode(ctx context.Context, node *v1alpha1.Node) error {

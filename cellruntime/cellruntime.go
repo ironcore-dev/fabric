@@ -51,6 +51,8 @@ type Runtime interface {
 	ApplyCell(ctx context.Context, node string, cfg *CellConfig) error
 	// DeleteCell deletes the given cell from the specified node.
 	DeleteCell(ctx context.Context, node string) error
+	// CellStatus returns the current cell status from the specified node.
+	CellStatus(ctx context.Context, node string) (*CellStatus, error)
 
 	// InterfaceID returns the provider internal ID of the interface specified by the given interface name.
 	InterfaceID(ctx context.Context, iface string) (string, error)
@@ -64,6 +66,20 @@ type Runtime interface {
 type InterfaceState struct {
 	Up bool
 }
+
+type CellStatus struct {
+	Phase CellPhase
+}
+
+type CellPhase string
+
+const (
+	CellPhaseCreated CellPhase = "Created"
+	CellPhaseActive  CellPhase = "Active"
+	CellPhaseError   CellPhase = "Error"
+)
+
+var ErrNotFound = errors.New("not found")
 
 type terminalError struct {
 	err error

@@ -120,17 +120,20 @@ var _ = BeforeSuite(func() {
 	fakeCellRuntime = cellruntimetesting.NewFakeCellRuntime()
 
 	err = (&NodeReconciler{
-		Client:       k8sManager.GetClient(),
-		APIReader:    k8sManager.GetAPIReader(),
-		CellRuntime:  fakeCellRuntime,
-		AbsenceCache: lru.New(100),
+		Client:                           k8sManager.GetClient(),
+		APIReader:                        k8sManager.GetAPIReader(),
+		CellRuntime:                      fakeCellRuntime,
+		AbsenceCache:                     lru.New(100),
+		CellRuntimePollImmediateInterval: 50 * time.Millisecond,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&CellReconciler{
-		Client:        k8sManager.GetClient(),
-		EventRecorder: &events.FakeRecorder{},
-		CellRuntime:   fakeCellRuntime,
+		Client:                           k8sManager.GetClient(),
+		EventRecorder:                    &events.FakeRecorder{},
+		CellRuntime:                      fakeCellRuntime,
+		CellRuntimePollInterval:          500 * time.Millisecond,
+		CellRuntimePollImmediateInterval: 50 * time.Millisecond,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

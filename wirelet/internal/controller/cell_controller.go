@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/netip"
 	"strings"
+	"time"
 
 	"github.com/ironcore-dev/wire/api/v1alpha1"
 	"github.com/ironcore-dev/wire/cellruntime"
@@ -33,8 +34,10 @@ func NodeFinalizer(nodeName string) string {
 type CellReconciler struct {
 	client.Client
 	events.EventRecorder
-	NodePredicate func(node *v1alpha1.Node) bool
-	CellRuntime   cellruntime.Runtime
+	NodePredicate                    func(node *v1alpha1.Node) bool
+	CellRuntime                      cellruntime.Runtime
+	CellRuntimePollInterval          time.Duration
+	CellRuntimePollImmediateInterval time.Duration
 }
 
 var terminalCellPhases = map[v1alpha1.CellPhase]struct{}{
@@ -106,8 +109,18 @@ func (r *CellReconciler) delete(
 		return ctrl.Result{}, nil
 	}
 
-	if _, ok := terminalCellPhases[cell.Status.Phase]; ok {
-		log.V(1).Info("Cell is in terminal phase, removing finalizer")
+	log.V(1).Info("Deleting cell from runtime")
+	if err := r.CellRuntime.DeleteCell(ctx, node.Name); err != nil {
+		if !errors.Is(err, cellruntime.ErrNotFound) {
+			return ctrl.Result{}, fmt.Errorf("deleting cell from runtime: %w", err)
+		}
+
+		if cell.Status.Phase != v1alpha1.CellExpired {
+			log.V(1).Info("Expiring cell")
+			return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellExpired)
+		}
+
+		log.V(1).Info("Cell expired & deleted from runtime, removing finalizer")
 		base := cell.DeepCopy()
 		controllerutil.RemoveFinalizer(cell, NodeFinalizer(node.Name))
 		if err := r.Patch(ctx, cell, client.MergeFrom(base)); err != nil {
@@ -118,13 +131,8 @@ func (r *CellReconciler) delete(
 		return ctrl.Result{}, nil
 	}
 
-	log.V(1).Info("Resetting cell")
-	if err := r.CellRuntime.DeleteCell(ctx, node.Name); err != nil {
-		return ctrl.Result{}, fmt.Errorf("resetting cell: %w", err)
-	}
-
-	log.V(1).Info("Expiring cell")
-	return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellExpired)
+	log.V(1).Info("Issued cell deletion from runtime")
+	return ctrl.Result{RequeueAfter: r.CellRuntimePollImmediateInterval}, nil
 }
 
 func (r *CellReconciler) patchClaimNode(ctx context.Context, node *v1alpha1.Node, cell *v1alpha1.Cell) error {
@@ -192,36 +200,54 @@ func (r *CellReconciler) reconcile(
 		return ctrl.Result{}, nil
 	}
 
-	if cell.Status.Phase == v1alpha1.CellActive {
-		log.V(1).Info("Cell is active, skipping apply")
-		return ctrl.Result{}, nil
-	}
-
-	if cell.Status.Phase == "" {
-		log.V(1).Info("Setting cell to pending")
-		return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellPending)
-	}
-
-	log.V(1).Info("Resolving cell config")
-	cfg, err := r.resolveCellConfig(ctx, cell)
+	log.V(1).Info("Getting cell status")
+	status, err := r.CellRuntime.CellStatus(ctx, node.Name)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("resolving cell config: %w", err)
-	}
-
-	log.V(1).Info("Applying cell")
-	if err := r.CellRuntime.ApplyCell(ctx, node.Name, cfg); err != nil {
-		if !errors.Is(err, cellruntime.TerminalError(nil)) {
-			r.Eventf(cell, node, v1.EventTypeWarning, "ApplyCellError", "ApplyCell", "Error applying cell: %v", err)
-			return ctrl.Result{}, fmt.Errorf("applying cell %s: %w", client.ObjectKeyFromObject(cell), err)
+		if !errors.Is(err, cellruntime.ErrNotFound) {
+			return ctrl.Result{}, fmt.Errorf("getting cell status: %w", err)
 		}
 
-		log.Error(err, "Encountered terminal error, setting cell to failed")
-		r.Eventf(cell, node, v1.EventTypeWarning, "ApplyCellTerminalError", "ApplyCell", "Terminal error applying cell: %v", err)
-		return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellFailed)
+		log.V(1).Info("Cell not found, resolving cell config")
+		cfg, err := r.resolveCellConfig(ctx, cell)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("resolving cell config: %w", err)
+		}
+
+		log.V(1).Info("Applying cell")
+		if err := r.CellRuntime.ApplyCell(ctx, node.Name, cfg); err != nil {
+			if !errors.Is(err, cellruntime.TerminalError(nil)) {
+				r.Eventf(cell, node, v1.EventTypeWarning, "ApplyCellError", "ApplyCell", "Error applying cell: %v", err)
+				return ctrl.Result{}, fmt.Errorf("applying cell %s: %w", client.ObjectKeyFromObject(cell), err)
+			}
+
+			log.Error(err, "Encountered terminal error, setting cell to failed")
+			r.Eventf(cell, node, v1.EventTypeWarning, "ApplyCellTerminalError", "ApplyCell", "Terminal error applying cell: %v", err)
+			return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellFailed)
+		}
+
+		log.V(1).Info("Setting cell to pending")
+		return ctrl.Result{RequeueAfter: r.CellRuntimePollImmediateInterval}, r.applyCellPhase(ctx, cell, v1alpha1.CellPending)
 	}
 
-	log.V(1).Info("Applied cell, setting cell to active")
-	return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellActive)
+	log.V(1).Info("Getting cell status")
+	var (
+		cellPhase    v1alpha1.CellPhase
+		requeueAfter time.Duration
+	)
+	switch status.Phase {
+	case cellruntime.CellPhaseCreated:
+		cellPhase = v1alpha1.CellPending
+		requeueAfter = r.CellRuntimePollImmediateInterval
+	case cellruntime.CellPhaseActive:
+		cellPhase = v1alpha1.CellActive
+		requeueAfter = r.CellRuntimePollInterval
+	case cellruntime.CellPhaseError:
+		cellPhase = v1alpha1.CellFailed
+		requeueAfter = r.CellRuntimePollInterval
+	}
+
+	log.V(1).Info("Applied cell, applying cell phase", "Phase", cellPhase, "RequeueAfter", requeueAfter)
+	return ctrl.Result{RequeueAfter: requeueAfter}, r.applyCellPhase(ctx, cell, cellPhase)
 }
 
 func (r *CellReconciler) resolveCellConfig(

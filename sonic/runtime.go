@@ -36,6 +36,11 @@ func (r *Runtime) DeleteCell(ctx context.Context, node string) error {
 	panic("implement me")
 }
 
+func (r *Runtime) CellStatus(ctx context.Context, node string) (*cellruntime.CellStatus, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (r *Runtime) InterfaceID(ctx context.Context, iface string) (string, error) {
 	// TODO implement me
 	panic("implement me")
