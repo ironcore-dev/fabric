@@ -1,0 +1,105 @@
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Cell
+metadata:
+  name: spine-1
+  namespace: default
+spec:
+  nodeRef:
+    name: spine-1
+  id: "100"
+  hostname: spine-1
+  ips:
+    - fd00::1
+  prefixes:
+    - fd00::/48
+  peers:
+    - interfaceRef:
+        name: spine-1-eth1
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Cell
+metadata:
+  name: leaf-1
+  namespace: default
+spec:
+  nodeRef:
+    name: leaf-1
+  id: "200"
+  hostname: leaf-1
+  ips:
+    - fd00::2
+  prefixes:
+    - fd00::/48
+  peers:
+    - interfaceRef:
+        name: leaf-1-eth0-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth1-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth2-0
+      dhcpRelay: fd00::ffff
+        #    - interfaceRef:
+        #  name: leaf-1-eth3-0
+        #dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth4-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth5-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth6-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth7-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth8-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth9-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth10-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth11-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth12-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth13-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth14-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth15-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth16-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth17-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth18-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth19-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth20-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth21-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth22-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth23-0
+      dhcpRelay: fd00::ffff

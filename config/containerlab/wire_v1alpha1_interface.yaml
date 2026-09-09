@@ -1,0 +1,224 @@
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: spine-1-eth1
+spec:
+  nodeRef:
+    name: spine-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth0-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth1-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth2-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth3-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth4-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth5-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth6-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth7-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth8-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth9-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth10-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth11-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth12-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth13-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth14-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth15-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth16-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth17-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth18-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth19-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth20-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth21-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth22-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up
+---
+apiVersion: wire.ironcore.dev/v1alpha1
+kind: Interface
+metadata:
+  name: leaf-1-eth23-0
+spec:
+  nodeRef:
+    name: leaf-1
+  adminState: Up

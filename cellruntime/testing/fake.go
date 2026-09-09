@@ -16,7 +16,7 @@ const ProviderName = "fake"
 type FakeCellRuntime struct {
 	sync.RWMutex
 	Cells           map[string]*FakeCell
-	InterfaceStates map[string]bool
+	InterfaceStates map[string]cellruntime.InterfaceState
 }
 
 type FakeCell struct {
@@ -90,9 +90,7 @@ func (r *FakeCellRuntime) InterfaceState(ctx context.Context, iface string) (*ce
 	if !ok {
 		return nil, fmt.Errorf("interface %s %w", iface, cellruntime.ErrNotFound)
 	}
-	return &cellruntime.InterfaceState{
-		Up: state,
-	}, nil
+	return &state, nil
 }
 
 func (r *FakeCellRuntime) SetInterfaceAdminState(ctx context.Context, handle string, up bool) error {
@@ -102,6 +100,9 @@ func (r *FakeCellRuntime) SetInterfaceAdminState(ctx context.Context, handle str
 	if _, ok := r.InterfaceStates[handle]; !ok {
 		return fmt.Errorf("interface %s %w", handle, cellruntime.ErrNotFound)
 	}
-	r.InterfaceStates[handle] = up
+	state := r.InterfaceStates[handle]
+	state.AdminUp = up
+	state.OperUp = up
+	r.InterfaceStates[handle] = state
 	return nil
 }

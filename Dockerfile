@@ -1,5 +1,7 @@
 # Build the manager binary
-FROM golang:1.25 AS builder
+# Keep the compiler on the host architecture. Buildx cross-compiles the static
+# binary for TARGETARCH below, avoiding slow QEMU emulation on Apple Silicon.
+FROM --platform=$BUILDPLATFORM golang:1.25.7 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -19,13 +21,15 @@ COPY . .
 # was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/main.go
+
+FROM builder AS wirelet-builder
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /out/wirelet ./cmd/wirelet-sonic
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/static:nonroot AS wirelet
 WORKDIR /
-COPY --from=builder /workspace/manager .
+COPY --from=wirelet-builder /out/wirelet /wirelet
 USER 65532:65532
 
-ENTRYPOINT ["/manager"]
+ENTRYPOINT ["/wirelet"]
