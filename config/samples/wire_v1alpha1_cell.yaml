@@ -1,9 +1,19 @@
 apiVersion: wire.ironcore.dev/v1alpha1
 kind: Cell
 metadata:
-  labels:
-    app.kubernetes.io/name: wire
-    app.kubernetes.io/managed-by: kustomize
   name: cell-sample
+  namespace: default
 spec:
-  # TODO(user): Add fields here
+  nodeRef:
+    name: node-sample
+  id: "100"
+  hostname: switch-sample
+  ips:
+    - 10.0.0.1
+    - 10.0.0.2
+  prefixes:
+    - 10.0.0.0/24
+  peers:
+    - interfaceRef:
+        name: iface-sample
+      dhcpRelay: 10.0.0.254

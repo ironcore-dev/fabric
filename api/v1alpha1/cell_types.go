@@ -69,7 +69,7 @@ type CellStatus struct {
 // +kubebuilder:resource
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.spec.nodeRef.name`
-// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.spec.phase`
+// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.phase`
 
 // Cell is the Schema for the cells API
 type Cell struct {

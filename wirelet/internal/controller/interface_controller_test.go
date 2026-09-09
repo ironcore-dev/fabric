@@ -7,7 +7,8 @@ import (
 	"fmt"
 
 	"github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/cellruntime/testing"
+	"github.com/ironcore-dev/wire/cellruntime"
+	celltesting "github.com/ironcore-dev/wire/cellruntime/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +52,7 @@ var _ = Describe("InterfaceController", func() {
 		Eventually(func(g Gomega) {
 			g.Expect(k8sClient.Get(ctx, iface1Key, iface)).To(Succeed())
 			g.Expect(iface.Status.OperationState).To(Equal(v1alpha1.OperationStateUnknown))
-			g.Expect(iface.Spec.Handle).To(Equal(fmt.Sprintf("%s://%s", testing.ProviderName, iface1Key.Name)))
+			g.Expect(iface.Spec.Handle).To(Equal(fmt.Sprintf("%s://%s", celltesting.ProviderName, iface1Key.Name)))
 		}).Should(Succeed())
 
 		By("adding the runtime state to the fake runtime")
@@ -60,9 +61,9 @@ var _ = Describe("InterfaceController", func() {
 			defer fakeCellRuntime.Unlock()
 
 			if fakeCellRuntime.InterfaceStates == nil {
-				fakeCellRuntime.InterfaceStates = make(map[string]bool)
+				fakeCellRuntime.InterfaceStates = make(map[string]cellruntime.InterfaceState)
 			}
-			fakeCellRuntime.InterfaceStates[iface.Name] = true
+			fakeCellRuntime.InterfaceStates[iface.Name] = cellruntime.InterfaceState{AdminUp: true, OperUp: true}
 		}()
 
 		By("issuing an empty patch to the interface to trigger reconcile")
@@ -88,7 +89,7 @@ var _ = Describe("InterfaceController", func() {
 
 			fakeCellRuntime.RLock()
 			defer fakeCellRuntime.RUnlock()
-			g.Expect(fakeCellRuntime.InterfaceStates[iface.Name]).To(BeTrueBecause("admin state has been set to true"))
+			g.Expect(fakeCellRuntime.InterfaceStates[iface.Name].AdminUp).To(BeTrueBecause("admin state has been set to true"))
 		}).Should(Succeed())
 	})
 })

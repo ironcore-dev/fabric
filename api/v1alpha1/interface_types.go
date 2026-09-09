@@ -75,7 +75,8 @@ type InterfaceStatus struct {
 // +kubebuilder:resource:scope=Cluster
 // +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.spec.nodeRef.name`
 // +kubebuilder:printcolumn:name="Handle",type=string,JSONPath=`.spec.handle`
-// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.operationState`
+// +kubebuilder:printcolumn:name="Admin_State",type=string,JSONPath=`.spec.adminState`
+// +kubebuilder:printcolumn:name="Operation_State",type=string,JSONPath=`.status.operationState`
 
 // Interface is the Schema for the interfaces API
 type Interface struct {

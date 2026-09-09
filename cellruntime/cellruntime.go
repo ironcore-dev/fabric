@@ -64,7 +64,8 @@ type Runtime interface {
 }
 
 type InterfaceState struct {
-	Up bool
+	AdminUp bool
+	OperUp  bool
 }
 
 type CellStatus struct {

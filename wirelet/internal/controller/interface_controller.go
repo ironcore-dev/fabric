@@ -48,25 +48,26 @@ func (r *InterfaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, r.setInterfaceHandle(ctx, iface, fmt.Sprintf("%s://%s", r.CellRuntime.ProviderName(), id))
 	}
 
-	actualState, err := r.CellRuntime.InterfaceState(ctx, iface.Name)
+	actualState, err := r.CellRuntime.InterfaceState(ctx, iface.Spec.Handle)
 	if err != nil {
 		log.Error(err, "Checking runtime interface state, setting state to unknown")
 		return ctrl.Result{}, r.applyOperationState(ctx, iface, v1alpha1.OperationStateUnknown)
 	}
 
 	desiredUp := iface.Spec.AdminState == v1alpha1.AdminStateUp
-	if desiredUp == actualState.Up {
-		log.V(1).Info("Desired up matches actual", "Up", actualState.Up)
-		return ctrl.Result{}, r.applyOperationState(ctx, iface, boolToOperationState(actualState.Up))
+	if desiredUp == actualState.AdminUp {
+		log.V(1).Info("Desired up matches actual", "Up", actualState.OperUp)
+		return ctrl.Result{}, r.applyOperationState(ctx, iface, boolToOperationState(actualState.OperUp))
 	}
 
 	log.V(1).Info("Setting runtime interface state", "Up", desiredUp)
-	if err := r.CellRuntime.SetInterfaceAdminState(ctx, iface.Name, desiredUp); err != nil {
+	if err := r.CellRuntime.SetInterfaceAdminState(ctx, iface.Spec.Handle, desiredUp); err != nil {
 		log.Error(err, "Setting interface state, setting state to unknown")
 		return ctrl.Result{}, r.applyOperationState(ctx, iface, v1alpha1.OperationStateUnknown)
 	}
 
 	log.V(1).Info("Set runtime interface state, updating state")
+	// FIXME:
 	return ctrl.Result{}, r.applyOperationState(ctx, iface, boolToOperationState(desiredUp))
 }
 
