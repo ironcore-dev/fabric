@@ -44,6 +44,10 @@ func main() {
 
 	if err := cli.Run(ctrl.SetupSignalHandler(), prov, cli.Options{
 		Flags: &flags,
+		Registration: &cli.RegistrationOptions{
+			NodeName:   name,
+			Interfaces: interfaces,
+		},
 		NodePredicate: func(node *v1alpha1.Node) bool {
 			return node.Name == name
 		},

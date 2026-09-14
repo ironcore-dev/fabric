@@ -33,6 +33,7 @@ func Init(ctx context.Context, c client.Client, nodeName, providerID string, opt
 	for _, ifaceOpts := range opts.Interfaces {
 		iface := v1alpha1.Interface(ifaceOpts.Name).
 			WithSpec(v1alpha1.InterfaceSpec().
+				WithNodeRef(v1alpha1.LocalObjectReference().WithName(nodeName)).
 				WithHandle(ifaceOpts.Handle))
 		if err := c.Apply(ctx, iface, fieldOwner); err != nil {
 			return fmt.Errorf("[interface %s] applying interface: %w", ifaceOpts.Name, err)

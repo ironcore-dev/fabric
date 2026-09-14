@@ -21,7 +21,7 @@ type InterfaceReconciler struct {
 	InterfacePredicate func(*v1alpha1.Interface) bool
 }
 
-// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces/status,verbs=get;patch;update
 
 func (r *InterfaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
