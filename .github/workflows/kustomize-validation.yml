@@ -14,8 +14,9 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v7
-      - uses: imranismail/setup-kustomize@v3
+      - name: Setup Go
+        uses: actions/setup-go@v7
         with:
-          kustomize-version: '5.0.0'
-      - run: |
-          ./hack/validate-kustomize.sh
+          go-version-file: go.mod
+      - name: Validate kustomizations
+        run: make validate-kustomize

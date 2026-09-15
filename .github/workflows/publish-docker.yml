@@ -25,7 +25,6 @@ jobs:
       matrix:
         image:
         - name: wirelet-sonic
-          file: './wirelet-sonic.Dockerfile'
           target: wirelet-sonic
     permissions:
       contents: read
@@ -82,7 +81,6 @@ jobs:
       uses: docker/build-push-action@v7
       with:
         context: .
-        file: ${{ matrix.image.file || './Dockerfile' }}
         platforms: linux/amd64,linux/arm64
         push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publish-image') }}
         tags: ${{ steps.meta.outputs.tags }}
