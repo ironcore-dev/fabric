@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // CellSpec defines the desired state of Cell
@@ -98,5 +99,8 @@ type CellList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Cell{}, &CellList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(SchemeGroupVersion, &Cell{}, &CellList{})
+		return nil
+	})
 }
