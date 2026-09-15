@@ -1,8 +1,5 @@
 # Image URL to use all building/pushing image targets
 IMG ?= wirelet-sonic:latest
-# YEAR defines the year value used for substituting the YEAR placeholder in the boilerplate header.
-YEAR ?= $(shell date +%Y)
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -55,7 +52,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 	@# makes controller-gen fail at its own gofmt step. Tolerate that specific
 	@# failure, repair the generated file and make sure the code compiles.
 	@out="$$""("$(CONTROLLER_GEN)" \
-		object:headerFile="hack/boilerplate.go.txt",year=$(YEAR) \
+		object:headerFile="hack/boilerplate.go.txt" \
 		applyconfiguration:headerFile="hack/boilerplate.go.txt" \
 		paths="./..." 2>&1)" || { \
 		echo "$${out}"; \
