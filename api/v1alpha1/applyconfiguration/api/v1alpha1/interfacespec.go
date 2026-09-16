@@ -6,7 +6,7 @@
 package v1alpha1
 
 import (
-	apiv1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1"
+	apiv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
 )
 
 // InterfaceSpecApplyConfiguration represents a declarative configuration of the InterfaceSpec type for use

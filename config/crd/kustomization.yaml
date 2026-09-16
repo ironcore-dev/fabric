@@ -2,9 +2,9 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/wire.ironcore.dev_nodes.yaml
-- bases/wire.ironcore.dev_interfaces.yaml
-- bases/wire.ironcore.dev_cells.yaml
+- bases/fabric.ironcore.dev_nodes.yaml
+- bases/fabric.ironcore.dev_interfaces.yaml
+- bases/fabric.ironcore.dev_cells.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

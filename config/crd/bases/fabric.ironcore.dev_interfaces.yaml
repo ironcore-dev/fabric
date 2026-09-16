@@ -4,20 +4,30 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
-  name: nodes.wire.ironcore.dev
+  name: interfaces.fabric.ironcore.dev
 spec:
-  group: wire.ironcore.dev
+  group: fabric.ironcore.dev
   names:
-    kind: Node
-    listKind: NodeList
-    plural: nodes
-    singular: node
+    kind: Interface
+    listKind: InterfaceList
+    plural: interfaces
+    singular: interface
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.nodeRef.name
+      name: Node
+      type: string
+    - jsonPath: .spec.handle
+      name: Handle
+      type: string
+    - jsonPath: .status.operationState
+      name: State
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Node is the Schema for the nodes API
+        description: Interface is the Schema for the interfaces API
         properties:
           apiVersion:
             description: |-
@@ -37,37 +47,31 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Node
+            description: spec defines the desired state of Interface
             properties:
-              cellRef:
-                description: CellRef references the active Cell configuration for
-                  this Node, if any.
+              adminState:
+                default: Up
+                description: AdminState is the administrative state of the interface.
+                type: string
+              handle:
+                description: Handle is the provider specific handle of this interface.
+                type: string
+              nodeRef:
+                description: NodeRef references the node this interface belongs to.
                 properties:
                   name:
                     type: string
-                  namespace:
-                    type: string
-                  uid:
-                    description: |-
-                      UID is a type that holds unique ID values, including UUIDs.  Because we
-                      don't ONLY use UUIDs, this is an alias to string.  Being a type captures
-                      intent and helps make sure that UIDs and names do not get conflated.
-                    type: string
-                required:
-                - name
-                - namespace
-                - uid
                 type: object
-              providerID:
-                description: ProviderID is the provider internal ID of the node.
-                type: string
+            required:
+            - adminState
+            - nodeRef
             type: object
           status:
-            description: status defines the observed state of Node
+            description: status defines the observed state of Interface
             properties:
               conditions:
                 description: |-
-                  Conditions represent the current state of the Node resource.
+                  Conditions represent the current state of the Interface resource.
                   Each condition has a unique type and reflects the status of a specific aspect of the resource.
 
                   Standard condition types include:
@@ -134,6 +138,10 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              operationState:
+                description: OperationState is the actual operation state the interface
+                  has.
+                type: string
             type: object
         required:
         - spec

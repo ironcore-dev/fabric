@@ -4,30 +4,27 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
-  name: interfaces.wire.ironcore.dev
+  name: cells.fabric.ironcore.dev
 spec:
-  group: wire.ironcore.dev
+  group: fabric.ironcore.dev
   names:
-    kind: Interface
-    listKind: InterfaceList
-    plural: interfaces
-    singular: interface
-  scope: Cluster
+    kind: Cell
+    listKind: CellList
+    plural: cells
+    singular: cell
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .spec.nodeRef.name
       name: Node
       type: string
-    - jsonPath: .spec.handle
-      name: Handle
-      type: string
-    - jsonPath: .status.operationState
+    - jsonPath: .spec.phase
       name: State
       type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Interface is the Schema for the interfaces API
+        description: Cell is the Schema for the cells API
         properties:
           apiVersion:
             description: |-
@@ -47,31 +44,49 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Interface
+            description: spec defines the desired state of Cell
             properties:
-              adminState:
-                default: Up
-                description: AdminState is the administrative state of the interface.
+              hostname:
                 type: string
-              handle:
-                description: Handle is the provider specific handle of this interface.
+              id:
                 type: string
+              ips:
+                items:
+                  type: string
+                type: array
               nodeRef:
-                description: NodeRef references the node this interface belongs to.
                 properties:
                   name:
                     type: string
                 type: object
+              peers:
+                items:
+                  properties:
+                    dhcpRelay:
+                      type: string
+                    interfaceRef:
+                      properties:
+                        name:
+                          type: string
+                      type: object
+                  required:
+                  - interfaceRef
+                  type: object
+                type: array
+              prefixes:
+                items:
+                  type: string
+                type: array
             required:
-            - adminState
+            - id
             - nodeRef
             type: object
           status:
-            description: status defines the observed state of Interface
+            description: status defines the observed state of Cell
             properties:
               conditions:
                 description: |-
-                  Conditions represent the current state of the Interface resource.
+                  Conditions represent the current state of the Cell resource.
                   Each condition has a unique type and reflects the status of a specific aspect of the resource.
 
                   Standard condition types include:
@@ -138,9 +153,8 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              operationState:
-                description: OperationState is the actual operation state the interface
-                  has.
+              phase:
+                description: Phase is the phase a Cell is in.
                 type: string
             type: object
         required:

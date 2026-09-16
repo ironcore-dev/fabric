@@ -26,9 +26,9 @@ func Parser() *typed.Parser {
 var parserOnce sync.Once
 var parser *typed.Parser
 var schemaYAML = typed.YAMLObject(`types:
-- name: com.github.ironcore-dev.wire.api.v1alpha1.AdminState
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.AdminState
   scalar: string
-- name: com.github.ironcore-dev.wire.api.v1alpha1.Cell
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.Cell
   map:
     fields:
     - name: apiVersion
@@ -42,13 +42,13 @@ var schemaYAML = typed.YAMLObject(`types:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
     - name: spec
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.CellSpec
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.CellSpec
     - name: status
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.CellStatus
-- name: com.github.ironcore-dev.wire.api.v1alpha1.CellPhase
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.CellStatus
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.CellPhase
   scalar: string
-- name: com.github.ironcore-dev.wire.api.v1alpha1.CellSpec
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.CellSpec
   map:
     fields:
     - name: hostname
@@ -65,12 +65,12 @@ var schemaYAML = typed.YAMLObject(`types:
           elementRelationship: atomic
     - name: nodeRef
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.LocalObjectReference
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.LocalObjectReference
     - name: peers
       type:
         list:
           elementType:
-            namedType: com.github.ironcore-dev.wire.api.v1alpha1.Peer
+            namedType: com.github.ironcore-dev.fabric.api.v1alpha1.Peer
           elementRelationship: atomic
     - name: prefixes
       type:
@@ -78,7 +78,7 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
-- name: com.github.ironcore-dev.wire.api.v1alpha1.CellStatus
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.CellStatus
   map:
     fields:
     - name: conditions
@@ -91,8 +91,8 @@ var schemaYAML = typed.YAMLObject(`types:
           - type
     - name: phase
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.CellPhase
-- name: com.github.ironcore-dev.wire.api.v1alpha1.Interface
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.CellPhase
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.Interface
   map:
     fields:
     - name: apiVersion
@@ -106,24 +106,24 @@ var schemaYAML = typed.YAMLObject(`types:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
     - name: spec
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.InterfaceSpec
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.InterfaceSpec
     - name: status
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.InterfaceStatus
-- name: com.github.ironcore-dev.wire.api.v1alpha1.InterfaceSpec
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.InterfaceStatus
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.InterfaceSpec
   map:
     fields:
     - name: adminState
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.AdminState
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.AdminState
       default: Up
     - name: handle
       type:
         scalar: string
     - name: nodeRef
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.LocalObjectReference
-- name: com.github.ironcore-dev.wire.api.v1alpha1.InterfaceStatus
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.LocalObjectReference
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.InterfaceStatus
   map:
     fields:
     - name: conditions
@@ -136,14 +136,14 @@ var schemaYAML = typed.YAMLObject(`types:
           - type
     - name: operationState
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.OperationState
-- name: com.github.ironcore-dev.wire.api.v1alpha1.LocalObjectReference
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.OperationState
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.LocalObjectReference
   map:
     fields:
     - name: name
       type:
         scalar: string
-- name: com.github.ironcore-dev.wire.api.v1alpha1.NamespacedUIDReference
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.NamespacedUIDReference
   map:
     fields:
     - name: name
@@ -155,7 +155,7 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: uid
       type:
         namedType: io.k8s.apimachinery.pkg.types.UID
-- name: com.github.ironcore-dev.wire.api.v1alpha1.Node
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.Node
   map:
     fields:
     - name: apiVersion
@@ -169,20 +169,20 @@ var schemaYAML = typed.YAMLObject(`types:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
     - name: spec
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.NodeSpec
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.NodeSpec
     - name: status
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.NodeStatus
-- name: com.github.ironcore-dev.wire.api.v1alpha1.NodeSpec
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.NodeStatus
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.NodeSpec
   map:
     fields:
     - name: cellRef
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.NamespacedUIDReference
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.NamespacedUIDReference
     - name: providerID
       type:
         scalar: string
-- name: com.github.ironcore-dev.wire.api.v1alpha1.NodeStatus
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.NodeStatus
   map:
     fields:
     - name: conditions
@@ -193,9 +193,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementRelationship: associative
           keys:
           - type
-- name: com.github.ironcore-dev.wire.api.v1alpha1.OperationState
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.OperationState
   scalar: string
-- name: com.github.ironcore-dev.wire.api.v1alpha1.Peer
+- name: com.github.ironcore-dev.fabric.api.v1alpha1.Peer
   map:
     fields:
     - name: dhcpRelay
@@ -203,7 +203,7 @@ var schemaYAML = typed.YAMLObject(`types:
         scalar: string
     - name: interfaceRef
       type:
-        namedType: com.github.ironcore-dev.wire.api.v1alpha1.LocalObjectReference
+        namedType: com.github.ironcore-dev.fabric.api.v1alpha1.LocalObjectReference
 - name: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
   map:
     fields:

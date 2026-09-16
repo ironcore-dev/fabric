@@ -6,7 +6,7 @@ package sonic
 import (
 	"context"
 
-	"github.com/ironcore-dev/wire/cellruntime"
+	"github.com/ironcore-dev/fabric/cellruntime"
 )
 
 type Runtime struct {

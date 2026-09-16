@@ -1,13 +1,13 @@
-# wire
-[![REUSE status](https://api.reuse.software/badge/github.com/ironcore-dev/wire)](https://api.reuse.software/info/github.com/ironcore-dev/wire)
+# fabric
+[![REUSE status](https://api.reuse.software/badge/github.com/ironcore-dev/fabric)](https://api.reuse.software/info/github.com/ironcore-dev/fabric)
 [![GitHub License](https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=blue)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://makeapullrequest.com)
 
-`wire` enables declarative configuration of network nodes.
+`fabric` enables declarative configuration of network nodes.
 
 ## Description
 
-`wire` models unconfigured nodes as a `Node`. A `Node`
+`fabric` models unconfigured nodes as a `Node`. A `Node`
 can have multiple `Interface`s. To actually make a
 `Node` configured, a `Cell` resource is created referencing
 the `Node` to configure (think of k8s' `Node` <-> `Pod` binding
@@ -18,7 +18,7 @@ resource, just that only a single `Cell` can be on a
 Since configuring a `Node` is heavily vendor-dependent, the
 [`cellruntime/Runtime`](cellruntime/cellruntime.go) interface
 allows a provider to implement the functionality required to
-integrate with `wire`.
+integrate with `fabric`.
 
 ## Getting Started
 
@@ -32,7 +32,7 @@ integrate with `wire`.
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/wire:tag
+make docker-build docker-push IMG=<some-registry>/fabric:tag
 ```
 
 **NOTE:** This image ought to be published in the personal registry you specified.
@@ -48,7 +48,7 @@ make install
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
 
 ```sh
-make deploy IMG=<some-registry>/wire:tag
+make deploy IMG=<some-registry>/fabric:tag
 ```
 
 > **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
@@ -91,7 +91,7 @@ Following the options to release and provide this solution to the users.
 1. Build the installer for the image built and published in the registry:
 
 ```sh
-make build-installer IMG=<some-registry>/wire:tag
+make build-installer IMG=<some-registry>/fabric:tag
 ```
 
 **NOTE:** The makefile target mentioned above generates an 'install.yaml'
@@ -105,7 +105,7 @@ Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
 the project, i.e.:
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/wire/<tag or branch>/dist/install.yaml
+kubectl apply -f https://raw.githubusercontent.com/<org>/fabric/<tag or branch>/dist/install.yaml
 ```
 
 ### By providing a Helm Chart

@@ -6,8 +6,8 @@ package controller
 import (
 	"fmt"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/cellruntime/testing"
+	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/cellruntime/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

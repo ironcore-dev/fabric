@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/cellruntime"
+	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/cellruntime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,8 +21,8 @@ type InterfaceReconciler struct {
 	InterfacePredicate func(*v1alpha1.Interface) bool
 }
 
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=interfaces,verbs=get;list;watch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=interfaces/status,verbs=get;patch;update
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces/status,verbs=get;patch;update
 
 func (r *InterfaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)

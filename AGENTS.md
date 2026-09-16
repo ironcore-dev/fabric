@@ -1,4 +1,4 @@
-# wire - AI Agent Guide
+# fabric - AI Agent Guide
 
 ## Project Structure
 

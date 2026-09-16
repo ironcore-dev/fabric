@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ironcore-dev/wire/cellruntime"
+	"github.com/ironcore-dev/fabric/cellruntime"
 )
 
 const ProviderName = "fake"

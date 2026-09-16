@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/cellruntime"
+	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/cellruntime"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/events"
@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const nodeFinalizerPrefix = "node.wirelet.ironcore.dev/"
+const nodeFinalizerPrefix = "node.fabriclet.ironcore.dev/"
 
 func NodeFinalizer(nodeName string) string {
 	return nodeFinalizerPrefix + nodeName
@@ -45,12 +45,12 @@ var terminalCellPhases = map[v1alpha1.CellPhase]struct{}{
 	v1alpha1.CellFailed:  {},
 }
 
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=cells,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=cells/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=cells/finalizers,verbs=update;patch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=nodes,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=nodes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=interfaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=cells,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=cells/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=cells/finalizers,verbs=update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch
 
 func (r *CellReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	cell := &v1alpha1.Cell{}

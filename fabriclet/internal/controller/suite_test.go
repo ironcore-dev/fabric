@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1"
-	cellruntimetesting "github.com/ironcore-dev/wire/cellruntime/testing"
+	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	cellruntimetesting "github.com/ironcore-dev/fabric/cellruntime/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
@@ -78,7 +78,7 @@ func TestControllers(t *testing.T) {
 	SetDefaultConsistentlyDuration(consistentlyDuration)
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "wirelet Suite")
+	RunSpecs(t, "fabriclet Suite")
 }
 
 var _ = BeforeSuite(func() {

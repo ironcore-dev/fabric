@@ -6,8 +6,8 @@
 package v1alpha1
 
 import (
-	apiv1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1"
-	internal "github.com/ironcore-dev/wire/api/v1alpha1/applyconfiguration/internal"
+	apiv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
+	internal "github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/internal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
@@ -34,7 +34,7 @@ func Node(name string) *NodeApplyConfiguration {
 	b := &NodeApplyConfiguration{}
 	b.WithName(name)
 	b.WithKind("Node")
-	b.WithAPIVersion("wire.ironcore.dev/v1alpha1")
+	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
 	return b
 }
 
@@ -47,14 +47,14 @@ func Node(name string) *NodeApplyConfiguration {
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
 func ExtractNodeFrom(node *apiv1alpha1.Node, fieldManager string, subresource string) (*NodeApplyConfiguration, error) {
 	b := &NodeApplyConfiguration{}
-	err := managedfields.ExtractInto(node, internal.Parser().Type("com.github.ironcore-dev.wire.api.v1alpha1.Node"), fieldManager, b, subresource)
+	err := managedfields.ExtractInto(node, internal.Parser().Type("com.github.ironcore-dev.fabric.api.v1alpha1.Node"), fieldManager, b, subresource)
 	if err != nil {
 		return nil, err
 	}
 	b.WithName(node.Name)
 
 	b.WithKind("Node")
-	b.WithAPIVersion("wire.ironcore.dev/v1alpha1")
+	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
 	return b, nil
 }
 

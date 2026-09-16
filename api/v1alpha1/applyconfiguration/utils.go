@@ -6,9 +6,9 @@
 package applyconfiguration
 
 import (
-	v1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1"
-	apiv1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1/applyconfiguration/api/v1alpha1"
-	internal "github.com/ironcore-dev/wire/api/v1alpha1/applyconfiguration/internal"
+	v1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
+	apiv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/api/v1alpha1"
+	internal "github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/internal"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
@@ -18,7 +18,7 @@ import (
 // apply configuration type exists for the given GroupVersionKind.
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
-	// Group=wire.ironcore.dev, Version=v1alpha1
+	// Group=fabric.ironcore.dev, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("Cell"):
 		return &apiv1alpha1.CellApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CellSpec"):

@@ -6,8 +6,8 @@
 package v1alpha1
 
 import (
-	apiv1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1"
-	internal "github.com/ironcore-dev/wire/api/v1alpha1/applyconfiguration/internal"
+	apiv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
+	internal "github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/internal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
@@ -35,7 +35,7 @@ func Cell(name, namespace string) *CellApplyConfiguration {
 	b.WithName(name)
 	b.WithNamespace(namespace)
 	b.WithKind("Cell")
-	b.WithAPIVersion("wire.ironcore.dev/v1alpha1")
+	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
 	return b
 }
 
@@ -48,7 +48,7 @@ func Cell(name, namespace string) *CellApplyConfiguration {
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
 func ExtractCellFrom(cell *apiv1alpha1.Cell, fieldManager string, subresource string) (*CellApplyConfiguration, error) {
 	b := &CellApplyConfiguration{}
-	err := managedfields.ExtractInto(cell, internal.Parser().Type("com.github.ironcore-dev.wire.api.v1alpha1.Cell"), fieldManager, b, subresource)
+	err := managedfields.ExtractInto(cell, internal.Parser().Type("com.github.ironcore-dev.fabric.api.v1alpha1.Cell"), fieldManager, b, subresource)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func ExtractCellFrom(cell *apiv1alpha1.Cell, fieldManager string, subresource st
 	b.WithNamespace(cell.Namespace)
 
 	b.WithKind("Cell")
-	b.WithAPIVersion("wire.ironcore.dev/v1alpha1")
+	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
 	return b, nil
 }
 
