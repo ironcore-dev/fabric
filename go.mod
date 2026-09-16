@@ -1,4 +1,4 @@
-module github.com/ironcore-dev/wire
+module github.com/ironcore-dev/fabric
 
 go 1.25.7
 

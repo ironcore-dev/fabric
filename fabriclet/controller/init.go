@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1/applyconfiguration/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -21,7 +21,7 @@ type InitOptions struct {
 }
 
 func Init(ctx context.Context, c client.Client, nodeName, providerID string, opts InitOptions) error {
-	fieldOwner := client.FieldOwner("node.wirelet.ironcore.dev/" + nodeName)
+	fieldOwner := client.FieldOwner("node.fabriclet.ironcore.dev/" + nodeName)
 
 	node := v1alpha1.Node(nodeName).
 		WithSpec(v1alpha1.NodeSpec().

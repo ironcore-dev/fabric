@@ -6,9 +6,9 @@ package main
 import (
 	"os"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/sonic"
-	"github.com/ironcore-dev/wire/wirelet/cli"
+	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/fabriclet/cli"
+	"github.com/ironcore-dev/fabric/sonic"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -51,7 +51,7 @@ func main() {
 			return interfaceSet.Has(iface.Name)
 		},
 	}); err != nil {
-		setupLog.Error(err, "Error running wirelet")
+		setupLog.Error(err, "Error running fabriclet")
 		os.Exit(1)
 	}
 }

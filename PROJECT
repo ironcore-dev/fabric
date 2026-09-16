@@ -6,29 +6,29 @@ cliVersion: 4.14.0
 domain: ironcore.dev
 layout:
 - go.kubebuilder.io/v4
-projectName: wire
-repo: github.com/ironcore-dev/wire
+projectName: fabric
+repo: github.com/ironcore-dev/fabric
 resources:
 - api:
     crdVersion: v1
   domain: ironcore.dev
-  group: wire
+  group: fabric
   kind: Node
-  path: github.com/ironcore-dev/wire/api/v1alpha1
+  path: github.com/ironcore-dev/fabric/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
   domain: ironcore.dev
-  group: wire
+  group: fabric
   kind: Interface
-  path: github.com/ironcore-dev/wire/api/v1alpha1
+  path: github.com/ironcore-dev/fabric/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   domain: ironcore.dev
-  group: wire
+  group: fabric
   kind: Cell
-  path: github.com/ironcore-dev/wire/api/v1alpha1
+  path: github.com/ironcore-dev/fabric/api/v1alpha1
   version: v1alpha1
 version: "3"

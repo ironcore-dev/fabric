@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 version = 1
-SPDX-PackageName = "wire"
+SPDX-PackageName = "fabric"
 SPDX-PackageSupplier = "IronCore authors <ospo@sap.com>"
-SPDX-PackageDownloadLocation = "https://github.com/ironcore-dev/wire"
+SPDX-PackageDownloadLocation = "https://github.com/ironcore-dev/fabric"
 
 [[annotations]]
 path = "**"

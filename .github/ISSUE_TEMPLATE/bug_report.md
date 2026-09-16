@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with Wire
+about: Report a problem with Fabric
 title: ''
 labels: bug
 assignees: ''
@@ -21,4 +21,4 @@ Describe what should have happened.
 
 ## Additional context
 
-Include the Wire version, Kubernetes version, relevant resources, and sanitized logs when available.
+Include the Fabric version, Kubernetes version, relevant resources, and sanitized logs when available.

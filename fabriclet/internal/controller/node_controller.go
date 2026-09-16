@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/cellruntime"
+	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/cellruntime"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/lru"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,10 +30,10 @@ type NodeReconciler struct {
 	CellRuntimePollImmediateInterval time.Duration
 }
 
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=nodes,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=nodes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=interfaces,verbs=get;list;watch
-// +kubebuilder:rbac:groups=wire.ironcore.dev,resources=cells,verbs=get;list;watch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=cells,verbs=get;list;watch
 
 func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)

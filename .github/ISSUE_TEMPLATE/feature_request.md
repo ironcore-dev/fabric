@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest a new feature or improvement for Wire
+about: Suggest a new feature or improvement for Fabric
 title: ''
 labels: enhancement
 assignees: ''

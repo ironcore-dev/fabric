@@ -1,21 +1,8 @@
 //go:build e2e
 // +build e2e
 
-/*
-Copyright SAP SE or an SAP affiliate company and IronCore contributors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and IronCore contributors
+// SPDX-License-Identifier: Apache-2.0
 
 package e2e
 
@@ -28,12 +15,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/ironcore-dev/wire/test/utils"
+	"github.com/ironcore-dev/fabric/test/utils"
 )
 
 var (
 	// managerImage is the manager image to be built and loaded for testing.
-	managerImage = "example.com/wire:v0.0.1"
+	managerImage = "example.com/fabric:v0.0.1"
 	// shouldCleanupCertManager tracks whether CertManager was installed by this suite.
 	shouldCleanupCertManager = false
 )
@@ -46,7 +33,7 @@ var (
 // To skip CertManager installation, set: CERT_MANAGER_INSTALL_SKIP=true
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	_, _ = fmt.Fprintf(GinkgoWriter, "Starting wire e2e test suite\n")
+	_, _ = fmt.Fprintf(GinkgoWriter, "Starting fabric e2e test suite\n")
 	RunSpecs(t, "e2e suite")
 }
 

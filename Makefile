@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= wirelet-sonic:latest
+IMG ?= fabriclet-sonic:latest
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -89,7 +89,7 @@ test: manifests generate fmt vet setup-envtest ## Run tests.
 # - KUBECTL_KUBERC=true
 # CertManager is installed by default; skip with:
 # - CERT_MANAGER_INSTALL_SKIP=true
-KIND_CLUSTER ?= wire-test-e2e
+KIND_CLUSTER ?= fabric-test-e2e
 
 .PHONY: setup-test-e2e
 setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
@@ -157,11 +157,11 @@ validate-kustomize: kustomize ## Validate all Kustomize configurations.
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/wirelet-sonic ./cmd/wirelet-sonic
+	go build -o bin/fabriclet-sonic ./cmd/fabriclet-sonic
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/wirelet-sonic
+	go run ./cmd/fabriclet-sonic
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.

@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"time"
 
-	wirev1alpha1 "github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/cellruntime"
-	internalctrl "github.com/ironcore-dev/wire/wirelet/internal/controller"
+	fabricv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/cellruntime"
+	internalctrl "github.com/ironcore-dev/fabric/fabriclet/internal/controller"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -69,8 +69,8 @@ type Options struct {
 	*Flags
 
 	LeaderElectionID   string
-	NodePredicate      func(*wirev1alpha1.Node) bool
-	InterfacePredicate func(*wirev1alpha1.Interface) bool
+	NodePredicate      func(*fabricv1alpha1.Node) bool
+	InterfacePredicate func(*fabricv1alpha1.Interface) bool
 }
 
 type InitRuntimeFunc func() (rt cellruntime.Runtime)
@@ -87,8 +87,8 @@ func Run(
 		return fmt.Errorf("adding client-go to scheme: %w", err)
 	}
 
-	if err := wirev1alpha1.AddToScheme(scheme); err != nil {
-		return fmt.Errorf("adding wire to scheme: %w", err)
+	if err := fabricv1alpha1.AddToScheme(scheme); err != nil {
+		return fmt.Errorf("adding fabric to scheme: %w", err)
 	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled

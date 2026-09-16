@@ -7,8 +7,8 @@ import (
 	"context"
 	"net/netip"
 
-	"github.com/ironcore-dev/wire/api/v1alpha1"
-	"github.com/ironcore-dev/wire/cellruntime"
+	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/cellruntime"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

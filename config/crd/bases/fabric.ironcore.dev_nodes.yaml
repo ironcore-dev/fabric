@@ -4,27 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
-  name: cells.wire.ironcore.dev
+  name: nodes.fabric.ironcore.dev
 spec:
-  group: wire.ironcore.dev
+  group: fabric.ironcore.dev
   names:
-    kind: Cell
-    listKind: CellList
-    plural: cells
-    singular: cell
-  scope: Namespaced
+    kind: Node
+    listKind: NodeList
+    plural: nodes
+    singular: node
+  scope: Cluster
   versions:
-  - additionalPrinterColumns:
-    - jsonPath: .spec.nodeRef.name
-      name: Node
-      type: string
-    - jsonPath: .spec.phase
-      name: State
-      type: string
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Cell is the Schema for the cells API
+        description: Node is the Schema for the nodes API
         properties:
           apiVersion:
             description: |-
@@ -44,49 +37,37 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Cell
+            description: spec defines the desired state of Node
             properties:
-              hostname:
-                type: string
-              id:
-                type: string
-              ips:
-                items:
-                  type: string
-                type: array
-              nodeRef:
+              cellRef:
+                description: CellRef references the active Cell configuration for
+                  this Node, if any.
                 properties:
                   name:
                     type: string
+                  namespace:
+                    type: string
+                  uid:
+                    description: |-
+                      UID is a type that holds unique ID values, including UUIDs.  Because we
+                      don't ONLY use UUIDs, this is an alias to string.  Being a type captures
+                      intent and helps make sure that UIDs and names do not get conflated.
+                    type: string
+                required:
+                - name
+                - namespace
+                - uid
                 type: object
-              peers:
-                items:
-                  properties:
-                    dhcpRelay:
-                      type: string
-                    interfaceRef:
-                      properties:
-                        name:
-                          type: string
-                      type: object
-                  required:
-                  - interfaceRef
-                  type: object
-                type: array
-              prefixes:
-                items:
-                  type: string
-                type: array
-            required:
-            - id
-            - nodeRef
+              providerID:
+                description: ProviderID is the provider internal ID of the node.
+                type: string
             type: object
           status:
-            description: status defines the observed state of Cell
+            description: status defines the observed state of Node
             properties:
               conditions:
                 description: |-
-                  Conditions represent the current state of the Cell resource.
+                  Conditions represent the current state of the Node resource.
                   Each condition has a unique type and reflects the status of a specific aspect of the resource.
 
                   Standard condition types include:
@@ -153,9 +134,6 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              phase:
-                description: Phase is the phase a Cell is in.
-                type: string
             type: object
         required:
         - spec
