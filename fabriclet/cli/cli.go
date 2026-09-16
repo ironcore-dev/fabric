@@ -239,15 +239,15 @@ func Run(
 		return fmt.Errorf("setting up interface controller: %w", err)
 	}
 
-	if err := (&internalctrl.CellReconciler{
+	if err := (&internalctrl.CellRuntimeReconciler{
 		Client:                           mgr.GetClient(),
-		EventRecorder:                    mgr.GetEventRecorder("cell-controller"),
+		EventRecorder:                    mgr.GetEventRecorder("cell-runtime-controller"),
 		NodePredicate:                    opts.NodePredicate,
 		CellRuntime:                      prov,
 		CellRuntimePollInterval:          1 * time.Minute,
 		CellRuntimePollImmediateInterval: 50 * time.Millisecond,
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("setting up cell controller: %w", err)
+		return fmt.Errorf("setting up cell runtime controller: %w", err)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

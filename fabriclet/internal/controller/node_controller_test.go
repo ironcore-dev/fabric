@@ -32,7 +32,7 @@ var _ = Describe("Node Controller", func() {
 		}).Should(Succeed())
 	})
 
-	It("should release nodes that are bound to non-existent cells", func(ctx SpecContext) {
+	It("should release a binding to a non-existent cell", func(ctx SpecContext) {
 		By("creating a node pointing at a non-existent cell")
 		node := &v1alpha1.Node{
 			ObjectMeta: metav1.ObjectMeta{

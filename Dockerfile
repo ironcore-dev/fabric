@@ -14,18 +14,26 @@ RUN go mod download
 # Copy the Go source (relies on .dockerignore to filter)
 COPY . .
 
-# Build
-# the GOARCH has no default value to allow the binary to be built according to the host where the command
-# was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
-# the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
-# by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o fabriclet-sonic cmd/fabriclet-sonic/main.go
+# Build the controller-manager and Fabriclet independently so each final image
+# contains only the binary it needs.
+FROM builder AS fabric-controller-manager-builder
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /out/fabric-controller-manager ./cmd/fabric-controller-manager
+
+FROM builder AS fabriclet-sonic-builder
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /out/fabriclet-sonic ./cmd/fabriclet-sonic
+
+FROM gcr.io/distroless/static:nonroot AS fabric-controller-manager
+WORKDIR /
+COPY --from=fabric-controller-manager-builder /out/fabric-controller-manager /fabric-controller-manager
+USER 65532:65532
+
+ENTRYPOINT ["/fabric-controller-manager"]
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot AS fabriclet-sonic
 WORKDIR /
-COPY --from=builder /workspace/fabriclet-sonic .
+COPY --from=fabriclet-sonic-builder /out/fabriclet-sonic /fabriclet-sonic
 USER 65532:65532
 
 ENTRYPOINT ["/fabriclet-sonic"]

@@ -81,6 +81,9 @@ spec:
             - id
             - nodeRef
             type: object
+            x-kubernetes-validations:
+            - message: nodeRef is immutable
+              rule: self.nodeRef == oldSelf.nodeRef
           status:
             description: status defines the observed state of Cell
             properties:

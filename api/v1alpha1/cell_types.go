@@ -7,7 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// CellSpec defines the desired state of Cell
+// CellSpec defines the desired state of Cell.
+// +kubebuilder:validation:XValidation:rule="self.nodeRef == oldSelf.nodeRef",message="nodeRef is immutable"
 type CellSpec struct {
 	NodeRef LocalObjectReference `json:"nodeRef"`
 

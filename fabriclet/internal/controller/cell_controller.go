@@ -31,7 +31,7 @@ func NodeFinalizer(nodeName string) string {
 	return nodeFinalizerPrefix + nodeName
 }
 
-type CellReconciler struct {
+type CellRuntimeReconciler struct {
 	client.Client
 	events.EventRecorder
 	NodePredicate                    func(node *v1alpha1.Node) bool
@@ -52,7 +52,7 @@ var terminalCellPhases = map[v1alpha1.CellPhase]struct{}{
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch
 
-func (r *CellReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *CellRuntimeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	cell := &v1alpha1.Cell{}
 	if err := r.Get(ctx, req.NamespacedName, cell); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -61,7 +61,7 @@ func (r *CellReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return r.reconcileExists(ctx, cell)
 }
 
-func (r *CellReconciler) reconcileExists(
+func (r *CellRuntimeReconciler) reconcileExists(
 	ctx context.Context,
 	cell *v1alpha1.Cell,
 ) (ctrl.Result, error) {
@@ -86,7 +86,7 @@ func (r *CellReconciler) reconcileExists(
 	return r.reconcile(ctx, node, cell)
 }
 
-func (r *CellReconciler) delete(
+func (r *CellRuntimeReconciler) delete(
 	ctx context.Context,
 	node *v1alpha1.Node,
 	cell *v1alpha1.Cell,
@@ -135,20 +135,20 @@ func (r *CellReconciler) delete(
 	return ctrl.Result{RequeueAfter: r.CellRuntimePollImmediateInterval}, nil
 }
 
-func (r *CellReconciler) patchClaimNode(ctx context.Context, node *v1alpha1.Node, cell *v1alpha1.Cell) error {
+func (r *CellRuntimeReconciler) patchClaimNode(ctx context.Context, node *v1alpha1.Node, cell *v1alpha1.Cell) error {
 	base := node.DeepCopy()
 	node.Spec.CellRef = &v1alpha1.NamespacedUIDReference{
 		Namespace: cell.Namespace,
 		Name:      cell.Name,
 		UID:       cell.UID,
 	}
-	if err := r.Patch(ctx, node, client.MergeFrom(base)); err != nil {
+	if err := r.Patch(ctx, node, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{})); err != nil {
 		return fmt.Errorf("patching node: %w", err)
 	}
 	return nil
 }
 
-func (r *CellReconciler) applyCellPhase(ctx context.Context, cell *v1alpha1.Cell, phase v1alpha1.CellPhase) error {
+func (r *CellRuntimeReconciler) applyCellPhase(ctx context.Context, cell *v1alpha1.Cell, phase v1alpha1.CellPhase) error {
 	if phase == cell.Status.Phase {
 		return nil
 	}
@@ -161,7 +161,7 @@ func (r *CellReconciler) applyCellPhase(ctx context.Context, cell *v1alpha1.Cell
 	return nil
 }
 
-func (r *CellReconciler) reconcile(
+func (r *CellRuntimeReconciler) reconcile(
 	ctx context.Context,
 	node *v1alpha1.Node,
 	cell *v1alpha1.Cell,
@@ -250,7 +250,7 @@ func (r *CellReconciler) reconcile(
 	return ctrl.Result{RequeueAfter: requeueAfter}, r.applyCellPhase(ctx, cell, cellPhase)
 }
 
-func (r *CellReconciler) resolveCellConfig(
+func (r *CellRuntimeReconciler) resolveCellConfig(
 	ctx context.Context,
 	cell *v1alpha1.Cell,
 ) (*cellruntime.CellConfig, error) {
@@ -321,7 +321,7 @@ const (
 	cellNodeKey = ".spec.nodeRef.name"
 )
 
-func (r *CellReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *CellRuntimeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Cell{}, cellNodeKey, func(obj client.Object) []string {
 		cell := obj.(*v1alpha1.Cell)
 		nodeName := cell.Spec.NodeRef.Name
@@ -331,6 +331,7 @@ func (r *CellReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("cell-runtime").
 		For(
 			&v1alpha1.Cell{},
 		).
