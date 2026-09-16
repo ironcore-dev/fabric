@@ -1,29 +1,23 @@
 ---
 name: Feature request
-about: Suggest a new feature or improvement for the metal-operator
+about: Suggest a new feature or improvement for Wire
 title: ''
 labels: enhancement
 assignees: ''
 ---
 
-**Which component does this relate to?**
-<!-- e.g. Server lifecycle, BMC management, boot configuration, maintenance workflow, BIOS settings, server discovery, API types, etc. -->
+# Summary
 
-**What is the reason for this feature request or change?**
-<!-- This is the most important section. Explain the problem or limitation you are facing. Why is this needed? What use case does it support? What pain point does it address? -->
+Briefly describe the proposed feature or change.
 
-**Describe the feature**
-A clear and concise description of the feature or change you'd like to see.
+## Basic example
 
-**Proposed API or behavior changes**
-<!-- If this involves new or changed CRDs / fields / status conditions, sketch out the API surface. -->
+If the proposal changes an API or behavior, include a small example. Omit this section when it is not applicable.
 
 ```yaml
-# Example resource definition showing the desired API, if applicable
+# Optional example
 ```
 
-**Alternatives considered**
-Describe any alternative solutions or workarounds you have considered.
+## Motivation
 
-**Additional context**
-Add any other context, references, or related issues here.
+Why is this needed, and what outcome should it provide?

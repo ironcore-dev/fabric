@@ -23,10 +23,10 @@ integrate with `wire`.
 ## Getting Started
 
 ### Prerequisites
-- go version v1.24.6+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+
+- The Go version declared in [`go.mod`](go.mod)
+- Docker with BuildKit support
+- `kubectl` and access to a compatible Kubernetes cluster
 
 ### To Deploy on the cluster
 **Build and push your image to the location specified by `IMG`:**
@@ -128,14 +128,16 @@ is manually re-applied afterwards.
 
 ## Contributing
 
-**NOTE:** Run `make help` for more information on all potential `make` targets
+Contributions are welcome. See the
+[IronCore contributor guide](https://github.com/ironcore-dev/community/blob/main/docs/contributing.md) for the shared
+contribution process.
 
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+**NOTE:** Run `make help` for more information on all available development and deployment targets.
 
 ## Licensing
 
-Copyright 2026 SAP SE or an SAP affiliate company and IronCore contributors. Please see our [LICENSE](LICENSE) for
+Copyright SAP SE or an SAP affiliate company and IronCore contributors. Please see our [LICENSE](LICENSE) for
 copyright and license information. Detailed information including third-party components and their licensing/copyright
-information is available [via the REUSE tool](https://api.reuse.software/info/github.com/ironcore-dev/wire).
+information is available through the [REUSE metadata](REUSE.toml).
 
 <p align="center"><img alt="Bundesministerium für Wirtschaft und Energie (BMWE)-EU funding logo" src="https://apeirora.eu/assets/img/BMWK-EU.png" width="400"/></p>
