@@ -8,7 +8,6 @@ rules:
   - fabric.ironcore.dev
   resources:
   - cells
-  - nodes
   verbs:
   - get
   - list
@@ -36,7 +35,11 @@ rules:
   - fabric.ironcore.dev
   resources:
   - interfaces
+  - nodes
   verbs:
+  - create
   - get
   - list
+  - patch
+  - update
   - watch

@@ -30,7 +30,7 @@ type NodeReconciler struct {
 	CellRuntimePollImmediateInterval time.Duration
 }
 
-// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=cells,verbs=get;list;watch

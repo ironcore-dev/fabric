@@ -12,6 +12,7 @@ import (
 
 	fabricv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
 	"github.com/ironcore-dev/fabric/cellruntime"
+	fabricletcontroller "github.com/ironcore-dev/fabric/fabriclet/controller"
 	internalctrl "github.com/ironcore-dev/fabric/fabriclet/internal/controller"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,9 +72,15 @@ type Options struct {
 	LeaderElectionID   string
 	NodePredicate      func(*fabricv1alpha1.Node) bool
 	InterfacePredicate func(*fabricv1alpha1.Interface) bool
+	Registration       *RegistrationOptions
 }
 
 type InitRuntimeFunc func() (rt cellruntime.Runtime)
+
+type RegistrationOptions struct {
+	NodeName   string
+	Interfaces []string
+}
 
 func Run(
 	ctx context.Context,
@@ -174,6 +181,43 @@ func Run(
 	})
 	if err != nil {
 		return fmt.Errorf("create new manager: %w", err)
+	}
+
+	if opts.Registration != nil {
+		nodeID, err := prov.NodeID(ctx, opts.Registration.NodeName)
+		if err != nil {
+			return fmt.Errorf("determining node ID for registration: %w", err)
+		}
+
+		initOpts := fabricletcontroller.InitOptions{
+			Interfaces: make([]fabricletcontroller.InitInterfaceOptions, 0, len(opts.Registration.Interfaces)),
+		}
+		for _, ifaceName := range opts.Registration.Interfaces {
+			ifaceID, err := prov.InterfaceID(ctx, ifaceName)
+			if err != nil {
+				return fmt.Errorf("determining interface ID for registration: %w", err)
+			}
+			initOpts.Interfaces = append(initOpts.Interfaces, fabricletcontroller.InitInterfaceOptions{
+				Name:   ifaceName,
+				Handle: fmt.Sprintf("%s://%s", prov.ProviderName(), ifaceID),
+			})
+		}
+
+		providerID := fmt.Sprintf("%s://%s", prov.ProviderName(), nodeID)
+		setupLog.Info(
+			"Registering Fabriclet resources",
+			"node", opts.Registration.NodeName,
+			"interfaces", opts.Registration.Interfaces,
+		)
+		if err := fabricletcontroller.Init(
+			ctx,
+			mgr.GetClient(),
+			opts.Registration.NodeName,
+			providerID,
+			initOpts,
+		); err != nil {
+			return fmt.Errorf("registering Fabriclet resources: %w", err)
+		}
 	}
 
 	if err := (&internalctrl.NodeReconciler{
