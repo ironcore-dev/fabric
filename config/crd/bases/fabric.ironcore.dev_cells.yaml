@@ -18,7 +18,7 @@ spec:
     - jsonPath: .spec.nodeRef.name
       name: Node
       type: string
-    - jsonPath: .spec.phase
+    - jsonPath: .status.phase
       name: State
       type: string
     name: v1alpha1

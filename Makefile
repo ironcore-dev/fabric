@@ -231,11 +231,15 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 ADDLICENSE ?= $(LOCALBIN)/addlicense
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+PROTOC_GEN_GO ?= $(LOCALBIN)/protoc-gen-go
+PROTOC_GEN_GO_GRPC ?= $(LOCALBIN)/protoc-gen-go-grpc
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.20.1
 ADDLICENSE_VERSION ?= v1.1.1
+PROTOC_GEN_GO_VERSION ?= v1.36.8
+PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
 
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell v='$(call gomodver,sigs.k8s.io/controller-runtime)'; \
@@ -292,6 +296,25 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 addlicense: $(ADDLICENSE) ## Download addlicense locally if necessary.
 $(ADDLICENSE): $(LOCALBIN)
 	$(call go-install-tool,$(ADDLICENSE),github.com/google/addlicense,$(ADDLICENSE_VERSION))
+
+.PHONY: generate-proto
+generate-proto: $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_GRPC) ## Generate Go code from proto/sonic/v1alpha1/sonic.proto.
+	protoc \
+	  --plugin=protoc-gen-go=$(PROTOC_GEN_GO) \
+	  --plugin=protoc-gen-go-grpc=$(PROTOC_GEN_GO_GRPC) \
+	  --go_out=. --go_opt=module=github.com/ironcore-dev/fabric \
+	  --go-grpc_out=. --go-grpc_opt=module=github.com/ironcore-dev/fabric \
+	  proto/sonic/v1alpha1/sonic.proto
+
+.PHONY: protoc-gen-go
+protoc-gen-go: $(PROTOC_GEN_GO) ## Download protoc-gen-go locally if necessary.
+$(PROTOC_GEN_GO): $(LOCALBIN)
+	$(call go-install-tool,$(PROTOC_GEN_GO),google.golang.org/protobuf/cmd/protoc-gen-go,$(PROTOC_GEN_GO_VERSION))
+
+.PHONY: protoc-gen-go-grpc
+protoc-gen-go-grpc: $(PROTOC_GEN_GO_GRPC) ## Download protoc-gen-go-grpc locally if necessary.
+$(PROTOC_GEN_GO_GRPC): $(LOCALBIN)
+	$(call go-install-tool,$(PROTOC_GEN_GO_GRPC),google.golang.org/grpc/cmd/protoc-gen-go-grpc,$(PROTOC_GEN_GO_GRPC_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

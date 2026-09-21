@@ -10,6 +10,8 @@ import (
 	"github.com/ironcore-dev/fabric/fabriclet/cli"
 	"github.com/ironcore-dev/fabric/sonic"
 	"github.com/spf13/pflag"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -19,10 +21,12 @@ func main() {
 	var flags cli.Flags
 	var name string
 	var interfaces []string
+	var sonicAddr string
 
 	flags.AddFlags(pflag.CommandLine)
 	pflag.StringVar(&name, "name", name, "Name of the node")
 	pflag.StringSliceVarP(&interfaces, "interface", "I", interfaces, "Names of the interfaces to reconcile")
+	pflag.StringVar(&sonicAddr, "sonic-addr", "localhost:50051", "Address of the sonic-agent gRPC endpoint")
 
 	pflag.Parse()
 
@@ -34,9 +38,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	conn, err := grpc.NewClient(sonicAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		setupLog.Error(err, "Error connecting to sonic-agent")
+		os.Exit(1)
+	}
+	defer conn.Close()
+
 	interfaceSet := sets.New(interfaces...)
 
-	prov, err := sonic.NewRuntime()
+	prov, err := sonic.NewRuntime(conn)
 	if err != nil {
 		setupLog.Error(err, "Error creating sonic runtime")
 		os.Exit(1)
@@ -44,10 +55,6 @@ func main() {
 
 	if err := cli.Run(ctrl.SetupSignalHandler(), prov, cli.Options{
 		Flags: &flags,
-		Registration: &cli.RegistrationOptions{
-			NodeName:   name,
-			Interfaces: interfaces,
-		},
 		NodePredicate: func(node *v1alpha1.Node) bool {
 			return node.Name == name
 		},

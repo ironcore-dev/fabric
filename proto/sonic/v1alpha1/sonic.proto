@@ -1,0 +1,162 @@
+// SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and IronCore contributors
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package switchagent.v1;
+
+option go_package = "github.com/ironcore-dev/fabric/sonic/sonicpb";
+
+message Status {
+  uint32 code = 1;
+  string message = 2;
+}
+
+service WireSonicSwitchService {
+  rpc GetInterface          (WireGetInterfaceRequest)            returns (WireGetInterfaceResponse);
+  rpc GetInterfaceState     (WireGetInterfaceStateRequest)       returns (WireGetInterfaceStateResponse);
+  rpc SetInterfaceAdminState(WireSetInterfaceAdminStateRequest)  returns (WireSetInterfaceAdminStateResponse);
+  rpc ListInterfaces        (ListInterfacesRequestV2)            returns (ListInterfacesResponseV2);
+  rpc ApplySwitch           (ApplySwitchRequest)                 returns (ApplySwitchResponse);
+  rpc DeleteSwitch          (DeleteSwitchRequest)                returns (DeleteSwitchResponse);
+  rpc GetCellStatus         (GetCellStatusRequest)               returns (GetCellStatusResponse);
+ // rpc FactoryReset          (FactoryResetRequest)                returns (FactoryResetResponse);
+}
+
+message WireGetInterfaceRequest {
+  // iface is the abstract interface name (e.g. "eth0-0").
+  string iface = 1;
+}
+
+message WireGetInterfaceResponse {
+  // interface_id is the SONiC-internal port identifier (e.g. "Ethernet0").
+  string interface_id = 1;
+}
+
+message WireGetInterfaceStateRequest {
+  // iface is the abstract interface name (e.g. "eth0-0").
+  string iface = 1;
+}
+
+message WireGetInterfaceStateResponse {
+  bool admin_up = 1;
+  bool oper_up  = 2;
+}
+
+message WireSetInterfaceAdminStateRequest {
+  // iface is the abstract interface name (e.g. "eth0-0").
+  string iface       = 1;
+  bool   admin_state = 2;
+}
+
+message WireSetInterfaceAdminStateResponse {}
+
+message ListInterfacesRequestV2 {}
+
+message ListInterfacesResponseV2 {
+  // interfaces is the list of interface names (e.g. "Ethernet0", "Ethernet4").
+  repeated string interfaces = 1;
+}
+
+// ── Switch configuration ──────────────────────────────────────────────────────
+
+message ApplySwitchRequest {
+  string device = 1;
+  SwitchConfig config = 2;
+}
+
+message ApplySwitchResponse {}
+
+message DeleteSwitchRequest {
+  string device = 1;
+}
+
+message DeleteSwitchResponse {
+  // state is "" when reprovision is complete, "Reprovisioning" while in progress.
+  string state = 1;
+}
+
+message GetCellStatusRequest {
+  string device = 1;
+}
+
+// GetCellStatusResponse reports the provisioning state last written by ApplySwitch.
+// state is "Creating", "Active", "Error", or "" (key absent — cell not yet provisioned).
+message GetCellStatusResponse {
+  string state   = 1;
+  string message = 2;
+}
+
+message SwitchConfig {
+  SwitchMetadata metadata    = 1;
+  string         hostname    = 2;
+  // loopback_ips are CIDR prefixes for the loopback interface (e.g. "fd00::1/128").
+  repeated string loopback_ips = 3;
+  // prefixes are advertised IP prefixes (e.g. "fd00::/64").
+  repeated string prefixes     = 4;
+  repeated VLAN   vlans        = 5;
+  // bgp is optional; omit when BGP is not configured.
+  BGPConfig bgp = 6;
+}
+
+message SwitchMetadata {
+  string namespace = 1;
+  string name      = 2;
+  string uid       = 3;
+}
+
+// ── VLAN ──────────────────────────────────────────────────────────────────────
+
+message VLAN {
+  int32  id         = 1;
+  // prefix is the CIDR subnet for this VLAN (e.g. "fd00::1:1/80").
+  string prefix     = 2;
+  // dhcp_relay is the DHCP relay IP; empty means no relay.
+  string dhcp_relay = 3;
+  repeated VLANMember members = 4;
+}
+
+message VLANMember {
+  // interface_id is the SONiC-internal port identifier (e.g. "Ethernet0").
+  string interface_id = 1;
+}
+
+// ── BGP ───────────────────────────────────────────────────────────────────────
+
+message BGPConfig {
+  uint32 asn       = 1;
+  string router_id = 2;
+  repeated BGPPeerGroup peer_groups = 3;
+}
+
+message BGPPeerGroup {
+  string name = 1;
+  repeated BGPNeighbor neighbors = 2;
+}
+
+message BGPNeighbor {
+  // vlan_id is set when the neighbor is VLAN-based.
+  int32  vlan_id      = 1;
+  // interface_id is the SONiC-internal port or VLAN interface (e.g. "Ethernet108", "Vlan1001").
+  string interface_id = 2;
+}
+
+
+
+service SwitchAgentService {
+  rpc FactoryReset  (FactoryResetRequest)  returns (FactoryResetResponse);
+  rpc GetReadiness  (GetReadinessRequest)  returns (GetReadinessResponse);
+}
+
+message FactoryResetRequest {}
+
+message FactoryResetResponse {
+  Status status = 1;
+}
+
+message GetReadinessRequest {}
+
+// ready is true when the agent is up and all required host-service modules are responding.
+message GetReadinessResponse {
+  bool ready = 1;
+}

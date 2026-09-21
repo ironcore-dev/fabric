@@ -1,0 +1,101 @@
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Cell
+metadata:
+  name: spine-1
+  namespace: default
+spec:
+  nodeRef:
+    name: spine-1
+  id: "1"
+  hostname: spine-1
+  ips:
+    - fd00::1
+  prefixes:
+    - fd00::/48
+  peers:
+    - interfaceRef:
+        name: spine-1-eth1-0
+    - interfaceRef:
+        name: spine-1-eth2-0
+---
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Cell
+metadata:
+  name: spine-2
+  namespace: default
+spec:
+  nodeRef:
+    name: spine-2
+  id: "2"
+  hostname: spine-2
+  ips:
+    - fd00::2
+  prefixes:
+    - fd00::/48
+  peers:
+    - interfaceRef:
+        name: spine-2-eth1-0
+    - interfaceRef:
+        name: spine-2-eth2-0
+---
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Cell
+metadata:
+  name: leaf-1
+  namespace: default
+spec:
+  nodeRef:
+    name: leaf-1
+  id: "3"
+  hostname: leaf-1
+  ips:
+    - fd00::3
+  prefixes:
+    - fd00::/48
+  peers:
+    - interfaceRef:
+        name: leaf-1-eth0-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth1-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth2-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth3-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-1-eth4-0
+      dhcpRelay: fd00::ffff
+---
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Cell
+metadata:
+  name: leaf-2
+  namespace: default
+spec:
+  nodeRef:
+    name: leaf-2
+  id: "4"
+  hostname: leaf-2
+  ips:
+    - fd00::4
+  prefixes:
+    - fd00::/48
+  peers:
+    - interfaceRef:
+        name: leaf-2-eth0-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-2-eth1-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-2-eth2-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-2-eth3-0
+      dhcpRelay: fd00::ffff
+    - interfaceRef:
+        name: leaf-2-eth4-0
+      dhcpRelay: fd00::ffff

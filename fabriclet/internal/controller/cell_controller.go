@@ -282,6 +282,10 @@ func (r *CellReconciler) resolveCellConfig(
 			return nil, fmt.Errorf("getting interface %s: %w", ifaceName, err)
 		}
 
+		if iface.Spec.Handle == "" {
+			return nil, fmt.Errorf("interface %s handle not yet set", ifaceName)
+		}
+
 		ifaceID, ok := strings.CutPrefix(iface.Spec.Handle, fmt.Sprintf("%s://", r.CellRuntime.ProviderName()))
 		if !ok {
 			return nil, fmt.Errorf("interface %s handle %q is invalid", ifaceName, iface.Spec.Handle)

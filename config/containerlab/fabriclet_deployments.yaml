@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fabriclet-spine-1
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fabriclet
+      node: spine-1
+  template:
+    metadata:
+      labels:
+        app: fabriclet
+        node: spine-1
+    spec:
+      serviceAccountName: fabriclet
+      containers:
+      - name: fabriclet
+        image: fabriclet:latest
+        imagePullPolicy: Never
+        args:
+          - --name=spine-1
+          - --interface=spine-1-eth0-0,spine-1-eth1-0,spine-1-eth2-0,spine-1-eth3-0,spine-1-eth4-0
+          - --sonic-addr=172.18.1.14:57400
+          - --zap-log-level=debug
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fabriclet-spine-2
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fabriclet
+      node: spine-2
+  template:
+    metadata:
+      labels:
+        app: fabriclet
+        node: spine-2
+    spec:
+      serviceAccountName: fabriclet
+      containers:
+      - name: fabriclet
+        image: fabriclet:latest
+        imagePullPolicy: Never
+        args:
+          - --name=spine-2
+          - --interface=spine-2-eth0-0,spine-2-eth1-0,spine-2-eth2-0,spine-2-eth3-0,spine-2-eth4-0
+          - --sonic-addr=172.18.1.15:57400
+          - --zap-log-level=debug
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fabriclet-leaf-1
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fabriclet
+      node: leaf-1
+  template:
+    metadata:
+      labels:
+        app: fabriclet
+        node: leaf-1
+    spec:
+      serviceAccountName: fabriclet
+      containers:
+      - name: fabriclet
+        image: fabriclet:latest
+        imagePullPolicy: Never
+        args:
+          - --name=leaf-1
+          - --interface=leaf-1-eth0-0,leaf-1-eth1-0,leaf-1-eth2-0,leaf-1-eth3-0,leaf-1-eth4-0
+          - --sonic-addr=172.18.1.12:57400
+          - --zap-log-level=debug
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fabriclet-leaf-2
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fabriclet
+      node: leaf-2
+  template:
+    metadata:
+      labels:
+        app: fabriclet
+        node: leaf-2
+    spec:
+      serviceAccountName: fabriclet
+      containers:
+      - name: fabriclet
+        image: fabriclet:latest
+        imagePullPolicy: Never
+        args:
+          - --name=leaf-2
+          - --interface=leaf-2-eth0-0,leaf-2-eth1-0,leaf-2-eth2-0,leaf-2-eth3-0,leaf-2-eth4-0
+          - --sonic-addr=172.18.1.13:57400
+          - --zap-log-level=debug

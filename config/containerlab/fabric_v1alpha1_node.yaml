@@ -1,0 +1,23 @@
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Node
+metadata:
+  name: spine-1
+spec: {}
+---
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Node
+metadata:
+  name: spine-2
+spec: {}
+---
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Node
+metadata:
+  name: leaf-1
+spec: {}
+---
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: Node
+metadata:
+  name: leaf-2
+spec: {}

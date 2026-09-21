@@ -4,7 +4,13 @@ topology:
     spine-1:
       kind: sonic-vs
       image: docker-sonic-vs:latest
+    spine-2:
+      kind: sonic-vs
+      image: docker-sonic-vs:latest
     leaf-1:
+      kind: sonic-vs
+      image: docker-sonic-vs:latest
+    leaf-2:
       kind: sonic-vs
       image: docker-sonic-vs:latest
 
@@ -12,3 +18,12 @@ topology:
   - endpoints:
     - spine-1:eth1
     - leaf-1:eth1
+  - endpoints:
+    - spine-1:eth2
+    - leaf-2:eth1
+  - endpoints:
+    - spine-2:eth1
+    - leaf-1:eth2
+  - endpoints:
+    - spine-2:eth2
+    - leaf-2:eth2
