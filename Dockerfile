@@ -17,23 +17,20 @@ COPY . .
 # Build the controller-manager and Fabriclet independently so each final image
 # contains only the binary it needs.
 FROM builder AS fabric-controller-manager-builder
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /out/fabric-controller-manager ./cmd/fabric-controller-manager
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o fabric-controller-manager ./cmd/fabric-controller-manager
 
 FROM builder AS fabriclet-sonic-builder
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /out/fabriclet-sonic ./cmd/fabriclet-sonic
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o fabriclet-sonic ./cmd/fabriclet-sonic
 
 FROM gcr.io/distroless/static:nonroot AS fabric-controller-manager
 WORKDIR /
-COPY --from=fabric-controller-manager-builder /out/fabric-controller-manager /fabric-controller-manager
+COPY --from=fabric-controller-manager-builder /workspace/fabric-controller-manager /fabric-controller-manager
 USER 65532:65532
 
 ENTRYPOINT ["/fabric-controller-manager"]
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot AS fabriclet-sonic
+FROM debian:bookworm-slim AS fabriclet-sonic
 WORKDIR /
-COPY --from=fabriclet-sonic-builder /out/fabriclet-sonic /fabriclet-sonic
-USER 65532:65532
+COPY --from=fabriclet-sonic-builder /workspace/fabriclet-sonic /fabriclet-sonic
 
 ENTRYPOINT ["/fabriclet-sonic"]
