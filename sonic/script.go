@@ -20,6 +20,7 @@ import (
 const (
 	ProviderName = "sonic"
 	doneFlagFile = "/etc/sonic/fabric-cell.done"
+	scriptDir    = "/etc/sonic"
 )
 
 //go:embed templates
@@ -134,19 +135,15 @@ func render(templateName string, values ...string) ([]byte, error) {
 	return []byte(strings.NewReplacer(values...).Replace(string(template))), nil
 }
 
-// runScript writes the script to a fresh file and executes it: a static path
-// would race with concurrent callers, and bash reads scripts incrementally
-// while executing them. Exit code 0 means success; anything else is terminal
-// since a failed script leaves partial config a blind retry may not fix.
 func runScript(ctx context.Context, script []byte) error {
-	f, err := os.CreateTemp("", "fabric-ztp-*.sh")
+	f, err := os.CreateTemp(scriptDir, "fabric-ztp-*.sh")
 	if err != nil {
 		return fmt.Errorf("creating ZTP script file: %w", err)
 	}
-	defer os.Remove(f.Name())
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	if _, err := f.Write(script); err != nil {
-		f.Close()
+		_ = f.Close()
 		return fmt.Errorf("writing ZTP script %s: %w", f.Name(), err)
 	}
 	if err := f.Close(); err != nil {
