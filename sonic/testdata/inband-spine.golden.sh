@@ -3,6 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 set -e
 
+# When run inside a container, re-exec in the host namespaces so the
+# config/systemctl/reboot calls below act on the host.
+if [ -z "$FABRIC_ON_HOST" ]; then
+    export FABRIC_ON_HOST=1
+    exec nsenter --target 1 --mount --net --pid bash "$0"
+fi
+
 # =============================
 # 1) CONFIGURABLE VARIABLES
 # =============================
