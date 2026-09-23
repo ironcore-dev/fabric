@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and IronCore contributors
+# SPDX-License-Identifier: Apache-2.0
 apiVersion: fabric.ironcore.dev/v1alpha1
 kind: Cell
 metadata:
@@ -6,4 +8,18 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: cell-sample
 spec:
-  # TODO(user): Add fields here
+  nodeRef:
+    name: swi1-ab-42
+  id: "42"
+  hostname: swi1-ab-42.fabric.example.com
+  ips:
+    - fd00:1234:5678:f2::
+  # prefixes[0] is the advertised summary, prefixes[1+i] the interface
+  # prefix of peers[i].
+  prefixes:
+    - fd00:1234:5678:f2::/64
+    - fd00:1234:5678:f2:1::/80
+  peers:
+    - interfaceRef:
+        name: Ethernet0
+      dhcpRelay: fd00:1234:5678:3201::1:547

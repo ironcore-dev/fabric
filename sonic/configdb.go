@@ -15,22 +15,12 @@ var errNotImplemented = errors.New("sonic configdb runtime: not implemented")
 // ConfigDBRuntime is a cellruntime.Runtime that writes directly to the SONiC CONFIG_DB.
 // TODO: implement. The script-based ScriptRuntime is the first step; select the
 // implementation with the fabriclet's --backend flag.
-type ConfigDBRuntime struct {
-	role         string
-	region       string
-	ipv6Base     string
-	searchDomain string
-}
+type ConfigDBRuntime struct{}
 
 var _ cellruntime.Runtime = (*ConfigDBRuntime)(nil)
 
-func NewConfigDBRuntime(role, region, ipv6Base, searchDomain string) (*ConfigDBRuntime, error) {
-	return &ConfigDBRuntime{
-		role:         role,
-		region:       region,
-		ipv6Base:     ipv6Base,
-		searchDomain: searchDomain,
-	}, nil
+func NewConfigDBRuntime() *ConfigDBRuntime {
+	return &ConfigDBRuntime{}
 }
 
 func (r *ConfigDBRuntime) ProviderName() string {
