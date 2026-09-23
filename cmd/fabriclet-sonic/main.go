@@ -19,16 +19,12 @@ import (
 
 func main() {
 	var flags cli.Flags
-	var name, backend, role, region, ipv6Base, searchDomain string
+	var name, backend string
 	var interfaces []string
 
 	flags.AddFlags(pflag.CommandLine)
 	pflag.StringVar(&name, "name", name, "Name of the node")
 	pflag.StringVar(&backend, "backend", "script", "Runtime implementation to use (script, configdb)")
-	pflag.StringVar(&role, "role", role, "Switch role (inband-leaf, inband-spine)")
-	pflag.StringVar(&region, "region", region, "Region of the switch")
-	pflag.StringVar(&ipv6Base, "ipv6-base", ipv6Base, "IPv6 base prefix of the site (e.g. 2001:db8:f00)")
-	pflag.StringVar(&searchDomain, "search-domain", searchDomain, "Search domain of the switch")
 	pflag.StringSliceVarP(&interfaces, "interface", "I", interfaces, "Names of the interfaces to reconcile")
 
 	pflag.Parse()
@@ -47,9 +43,9 @@ func main() {
 	var err error
 	switch backend {
 	case "script":
-		prov, err = sonic.NewScriptRuntime(role, region, ipv6Base, searchDomain)
+		prov = sonic.NewScriptRuntime()
 	case "configdb":
-		prov, err = sonic.NewConfigDBRuntime(role, region, ipv6Base, searchDomain)
+		prov = sonic.NewConfigDBRuntime()
 	default:
 		err = fmt.Errorf("unknown backend %q", backend)
 	}

@@ -11,6 +11,6 @@ if [ -z "$FABRIC_ON_HOST" ]; then
 fi
 
 # Reset script for node swi1-ab-42, rendered by the fabric cell runtime.
-# TODO: factory-reset the switch here (ONIE re-install).
+# TODO: reset the configuration of the device to a clean state.
 echo "Resetting the device is not implemented yet"
 exit 0

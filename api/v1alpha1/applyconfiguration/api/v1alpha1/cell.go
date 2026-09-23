@@ -6,11 +6,8 @@
 package v1alpha1
 
 import (
-	apiv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
-	internal "github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/internal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
-	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
@@ -19,7 +16,7 @@ import (
 //
 // Cell is the Schema for the cells API
 type CellApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration `json:""`
+	v1.TypeMetaApplyConfiguration `json:",inline"`
 	// metadata is a standard object metadata
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// spec defines the desired state of Cell
@@ -37,47 +34,6 @@ func Cell(name, namespace string) *CellApplyConfiguration {
 	b.WithKind("Cell")
 	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
 	return b
-}
-
-// ExtractCellFrom extracts the applied configuration owned by fieldManager from
-// cell for the specified subresource. Pass an empty string for subresource to extract
-// the main resource. Common subresources include "status", "scale", etc.
-// cell must be a unmodified Cell API object that was retrieved from the Kubernetes API.
-// ExtractCellFrom provides a way to perform a extract/modify-in-place/apply workflow.
-// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
-// applied if another fieldManager has updated or force applied any of the previously applied fields.
-func ExtractCellFrom(cell *apiv1alpha1.Cell, fieldManager string, subresource string) (*CellApplyConfiguration, error) {
-	b := &CellApplyConfiguration{}
-	err := managedfields.ExtractInto(cell, internal.Parser().Type("com.github.ironcore-dev.fabric.api.v1alpha1.Cell"), fieldManager, b, subresource)
-	if err != nil {
-		return nil, err
-	}
-	b.WithName(cell.Name)
-	b.WithNamespace(cell.Namespace)
-
-	b.WithKind("Cell")
-	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
-	return b, nil
-}
-
-// ExtractCell extracts the applied configuration owned by fieldManager from
-// cell. If no managedFields are found in cell for fieldManager, a
-// CellApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
-// cell must be a unmodified Cell API object that was retrieved from the Kubernetes API.
-// ExtractCell provides a way to perform a extract/modify-in-place/apply workflow.
-// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
-// applied if another fieldManager has updated or force applied any of the previously applied fields.
-func ExtractCell(cell *apiv1alpha1.Cell, fieldManager string) (*CellApplyConfiguration, error) {
-	return ExtractCellFrom(cell, fieldManager, "")
-}
-
-// ExtractCellStatus extracts the applied configuration owned by fieldManager from
-// cell for the status subresource.
-func ExtractCellStatus(cell *apiv1alpha1.Cell, fieldManager string) (*CellApplyConfiguration, error) {
-	return ExtractCellFrom(cell, fieldManager, "status")
 }
 
 func (b CellApplyConfiguration) IsApplyConfiguration() {}

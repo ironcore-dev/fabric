@@ -23,7 +23,7 @@ type InitOptions struct {
 func Init(ctx context.Context, c client.Client, nodeName, providerID string, opts InitOptions) error {
 	fieldOwner := client.FieldOwner("node.fabriclet.ironcore.dev/" + nodeName)
 
-	node := v1alpha1.Node(nodeName).
+	node := v1alpha1.Node(nodeName, "").
 		WithSpec(v1alpha1.NodeSpec().
 			WithProviderID(providerID))
 	if err := c.Apply(ctx, node, fieldOwner); err != nil {
@@ -31,7 +31,7 @@ func Init(ctx context.Context, c client.Client, nodeName, providerID string, opt
 	}
 
 	for _, ifaceOpts := range opts.Interfaces {
-		iface := v1alpha1.Interface(ifaceOpts.Name).
+		iface := v1alpha1.Interface(ifaceOpts.Name, "").
 			WithSpec(v1alpha1.InterfaceSpec().
 				WithNodeRef(v1alpha1.LocalObjectReference().WithName(nodeName)).
 				WithHandle(ifaceOpts.Handle))
