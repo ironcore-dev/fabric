@@ -6,6 +6,8 @@ package sonic
 import (
 	"errors"
 	"flag"
+	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,56 +45,118 @@ func compareGolden(t *testing.T, name string, got []byte) {
 	}
 }
 
-func testRuntime(t *testing.T, role string) *ScriptRuntime {
-	t.Helper()
-
-	rt, err := NewScriptRuntime(role, "ab", "fd00:1234:5678", "fabric.example.com")
-	if err != nil {
-		t.Fatalf("creating runtime: %v", err)
+// testCell builds a small leaf cell config: one summary prefix, one /80
+// interface prefix per south-facing server port (Ethernet0, 4) and two
+// spine uplinks (Ethernet108, 112) as fabric peers.
+func testCell(hostname string) *cellruntime.CellConfig {
+	prefixes := []netip.Prefix{netip.MustParsePrefix("fd00:1234:5678:f2::/64")}
+	peers := make([]cellruntime.Peer, 0, 4)
+	for i := 0; i <= 4; i += 4 {
+		prefixes = append(prefixes, netip.MustParsePrefix(fmt.Sprintf("fd00:1234:5678:f2:%04x::/80", i+1)))
+		peers = append(peers, cellruntime.Peer{
+			Interface: &cellruntime.Interface{
+				Metadata: cellruntime.InterfaceMetadata{Name: fmt.Sprintf("eth%d", i)},
+				ID:       fmt.Sprintf("Ethernet%d", i),
+			},
+			DHCPRelay: "fd00:1234:5678:3201::1:547",
+		})
 	}
-	return rt
+	for i := 108; i <= 112; i += 4 {
+		peers = append(peers, cellruntime.Peer{
+			Interface: &cellruntime.Interface{
+				Metadata: cellruntime.InterfaceMetadata{Name: fmt.Sprintf("eth%d", i)},
+				ID:       fmt.Sprintf("Ethernet%d", i),
+			},
+		})
+	}
+	return &cellruntime.CellConfig{
+		Metadata: cellruntime.CellMetadata{
+			Namespace: "default", Name: "cell-42", Labels: map[string]string{CellRoleLabel: RoleLeaf},
+		},
+		ID:          "42",
+		Hostname:    hostname,
+		LoopbackIPs: []netip.Addr{netip.MustParseAddr("fd00:1234:5678:f2::")},
+		Prefixes:    prefixes,
+		Peers:       peers,
+	}
 }
 
-var placeholders = []string{"__id__", "__region__", "__ipv6_base__", "__search_domain__", "__node__"}
-
 func TestRenderCell(t *testing.T) {
-	for _, role := range []string{"inband-leaf", "inband-spine"} {
-		t.Run(role, func(t *testing.T) {
-			got, err := testRuntime(t, role).renderCell(&cellruntime.CellConfig{ID: "42"})
+	for _, test := range []struct {
+		name     string
+		hostname string
+		mutate   func(*cellruntime.CellConfig)
+	}{
+		{name: "leaf", hostname: "swi1-ab-42.fabric.example.com"},
+		{name: "spine", hostname: "swi2-ab-7.fabric.example.com", mutate: func(c *cellruntime.CellConfig) {
+			// A spine cell has the spine role label, the summary prefix and
+			// only fabric peers.
+			c.Metadata.Labels[CellRoleLabel] = RoleSpine
+			var fabricPeers []cellruntime.Peer
+			for _, peer := range c.Peers {
+				if peer.DHCPRelay == "" {
+					fabricPeers = append(fabricPeers, peer)
+				}
+			}
+			c.Peers = fabricPeers
+			c.Prefixes = c.Prefixes[:1]
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := testCell(test.hostname)
+			if test.mutate != nil {
+				test.mutate(cfg)
+			}
+
+			got, err := NewScriptRuntime().renderCell(cfg)
 			if err != nil {
 				t.Fatalf("rendering cell: %v", err)
 			}
 
-			for _, placeholder := range placeholders {
-				if strings.Contains(string(got), placeholder) {
-					t.Errorf("rendered script still contains %s", placeholder)
-				}
+			if strings.Contains(string(got), "{{") {
+				t.Error("rendered script still contains a template action")
 			}
-			compareGolden(t, role+".golden.sh", got)
+			compareGolden(t, test.name+".golden.sh", got)
 		})
 	}
 }
 
 func TestRenderReset(t *testing.T) {
-	got, err := testRuntime(t, "inband-leaf").renderReset("swi1-ab-42")
+	got, err := NewScriptRuntime().renderReset("swi1-ab-42")
 	if err != nil {
 		t.Fatalf("rendering reset: %v", err)
 	}
 	compareGolden(t, "reset.golden.sh", got)
 }
 
-func TestRenderCellNonNumericID(t *testing.T) {
-	_, err := testRuntime(t, "inband-leaf").renderCell(&cellruntime.CellConfig{ID: "abc"})
-	if !errors.Is(err, cellruntime.TerminalError(nil)) {
-		t.Errorf("expected terminal error for non-numeric cell ID, got %v", err)
-	}
-}
+func TestRenderCellInvalid(t *testing.T) {
+	rt := NewScriptRuntime()
 
-func TestNewScriptRuntimeValidatesRole(t *testing.T) {
-	if _, err := NewScriptRuntime("oob-leaf", "ab", "fd00:1234:5678", "fabric.example.com"); err == nil {
-		t.Error("expected error for role without template")
-	}
-	if _, err := NewScriptRuntime("inband-leaf", "", "fd00:1234:5678", "fabric.example.com"); err == nil {
-		t.Error("expected error for empty region")
+	for name, mutate := range map[string]func(*cellruntime.CellConfig){
+		"non-numeric ID":       func(c *cellruntime.CellConfig) { c.ID = "abc" },
+		"missing hostname":     func(c *cellruntime.CellConfig) { c.Hostname = "" },
+		"missing loopback IPs": func(c *cellruntime.CellConfig) { c.LoopbackIPs = nil },
+		"missing prefixes":     func(c *cellruntime.CellConfig) { c.Prefixes = nil },
+		"no peers":             func(c *cellruntime.CellConfig) { c.Peers = nil },
+		"missing role":         func(c *cellruntime.CellConfig) { delete(c.Metadata.Labels, CellRoleLabel) },
+		"unknown role":         func(c *cellruntime.CellConfig) { c.Metadata.Labels[CellRoleLabel] = "tor" },
+		"spine with server peers": func(c *cellruntime.CellConfig) {
+			c.Metadata.Labels[CellRoleLabel] = RoleSpine
+		},
+		"peer without interface": func(c *cellruntime.CellConfig) {
+			c.Peers[0].Interface = nil
+		},
+		"peer with invalid DHCP relay": func(c *cellruntime.CellConfig) {
+			c.Peers[0].DHCPRelay = "not-an-ip"
+		},
+		"prefix count mismatch": func(c *cellruntime.CellConfig) { c.Prefixes = c.Prefixes[:2] },
+	} {
+		t.Run(name, func(t *testing.T) {
+			cfg := testCell("swi1-ab-42.fabric.example.com")
+			mutate(cfg)
+			if _, err := rt.renderCell(cfg); !errors.Is(err, cellruntime.TerminalError(nil)) {
+				t.Errorf("expected terminal error, got %v", err)
+			}
+		})
 	}
 }

@@ -10,7 +10,7 @@ if [ -z "$FABRIC_ON_HOST" ]; then
     exec nsenter --target 1 --mount --net --pid bash "$0"
 fi
 
-# Reset script for node __node__, rendered by the fabric cell runtime.
-# TODO: factory-reset the switch here (ONIE re-install).
+# Reset script for node {{ .Node }}, rendered by the fabric cell runtime.
+# TODO: reset the configuration of the device to a clean state.
 echo "Resetting the device is not implemented yet"
 exit 0
