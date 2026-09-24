@@ -63,8 +63,10 @@ func (r *ScriptRuntime) ApplyCell(ctx context.Context, node string, cfg *cellrun
 	return runScript(ctx, script)
 }
 
-// TODO: reset the configuration of the device. Runs the (currently noop) reset script.
 func (r *ScriptRuntime) DeleteCell(ctx context.Context, node string) error {
+	if !fileExists(doneFlagFile) {
+		return fmt.Errorf("cell %s %w", node, cellruntime.ErrNotFound)
+	}
 	script, err := r.renderReset(node)
 	if err != nil {
 		return err
