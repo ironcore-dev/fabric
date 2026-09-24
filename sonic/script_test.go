@@ -126,6 +126,9 @@ func TestRenderReset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("rendering reset: %v", err)
 	}
+	if strings.Contains(string(got), "{{") {
+		t.Error("rendered script still contains a template action")
+	}
 	compareGolden(t, "reset.golden.sh", got)
 }
 
