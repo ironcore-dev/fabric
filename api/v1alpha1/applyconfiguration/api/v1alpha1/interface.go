@@ -6,11 +6,8 @@
 package v1alpha1
 
 import (
-	apiv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
-	internal "github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/internal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
-	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
@@ -19,7 +16,7 @@ import (
 //
 // Interface is the Schema for the interfaces API
 type InterfaceApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration `json:""`
+	v1.TypeMetaApplyConfiguration `json:",inline"`
 	// metadata is a standard object metadata
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// spec defines the desired state of Interface
@@ -30,52 +27,13 @@ type InterfaceApplyConfiguration struct {
 
 // Interface constructs a declarative configuration of the Interface type for use with
 // apply.
-func Interface(name string) *InterfaceApplyConfiguration {
+func Interface(name, namespace string) *InterfaceApplyConfiguration {
 	b := &InterfaceApplyConfiguration{}
 	b.WithName(name)
+	b.WithNamespace(namespace)
 	b.WithKind("Interface")
 	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
 	return b
-}
-
-// ExtractInterfaceFrom extracts the applied configuration owned by fieldManager from
-// interface for the specified subresource. Pass an empty string for subresource to extract
-// the main resource. Common subresources include "status", "scale", etc.
-// interface must be a unmodified Interface API object that was retrieved from the Kubernetes API.
-// ExtractInterfaceFrom provides a way to perform a extract/modify-in-place/apply workflow.
-// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
-// applied if another fieldManager has updated or force applied any of the previously applied fields.
-func ExtractInterfaceFrom(iface *apiv1alpha1.Interface, fieldManager string, subresource string) (*InterfaceApplyConfiguration, error) {
-	b := &InterfaceApplyConfiguration{}
-	err := managedfields.ExtractInto(iface, internal.Parser().Type("com.github.ironcore-dev.fabric.api.v1alpha1.Interface"), fieldManager, b, subresource)
-	if err != nil {
-		return nil, err
-	}
-	b.WithName(iface.Name)
-
-	b.WithKind("Interface")
-	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
-	return b, nil
-}
-
-// ExtractInterface extracts the applied configuration owned by fieldManager from
-// interface. If no managedFields are found in interface for fieldManager, a
-// InterfaceApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
-// interface must be a unmodified Interface API object that was retrieved from the Kubernetes API.
-// ExtractInterface provides a way to perform a extract/modify-in-place/apply workflow.
-// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
-// applied if another fieldManager has updated or force applied any of the previously applied fields.
-func ExtractInterface(iface *apiv1alpha1.Interface, fieldManager string) (*InterfaceApplyConfiguration, error) {
-	return ExtractInterfaceFrom(iface, fieldManager, "")
-}
-
-// ExtractInterfaceStatus extracts the applied configuration owned by fieldManager from
-// interface for the status subresource.
-func ExtractInterfaceStatus(iface *apiv1alpha1.Interface, fieldManager string) (*InterfaceApplyConfiguration, error) {
-	return ExtractInterfaceFrom(iface, fieldManager, "status")
 }
 
 func (b InterfaceApplyConfiguration) IsApplyConfiguration() {}

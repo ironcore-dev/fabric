@@ -6,11 +6,8 @@
 package v1alpha1
 
 import (
-	apiv1alpha1 "github.com/ironcore-dev/fabric/api/v1alpha1"
-	internal "github.com/ironcore-dev/fabric/api/v1alpha1/applyconfiguration/internal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
-	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
@@ -19,7 +16,7 @@ import (
 //
 // Node is the Schema for the nodes API
 type NodeApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration `json:""`
+	v1.TypeMetaApplyConfiguration `json:",inline"`
 	// metadata is a standard object metadata
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// spec defines the desired state of Node
@@ -30,52 +27,13 @@ type NodeApplyConfiguration struct {
 
 // Node constructs a declarative configuration of the Node type for use with
 // apply.
-func Node(name string) *NodeApplyConfiguration {
+func Node(name, namespace string) *NodeApplyConfiguration {
 	b := &NodeApplyConfiguration{}
 	b.WithName(name)
+	b.WithNamespace(namespace)
 	b.WithKind("Node")
 	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
 	return b
-}
-
-// ExtractNodeFrom extracts the applied configuration owned by fieldManager from
-// node for the specified subresource. Pass an empty string for subresource to extract
-// the main resource. Common subresources include "status", "scale", etc.
-// node must be a unmodified Node API object that was retrieved from the Kubernetes API.
-// ExtractNodeFrom provides a way to perform a extract/modify-in-place/apply workflow.
-// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
-// applied if another fieldManager has updated or force applied any of the previously applied fields.
-func ExtractNodeFrom(node *apiv1alpha1.Node, fieldManager string, subresource string) (*NodeApplyConfiguration, error) {
-	b := &NodeApplyConfiguration{}
-	err := managedfields.ExtractInto(node, internal.Parser().Type("com.github.ironcore-dev.fabric.api.v1alpha1.Node"), fieldManager, b, subresource)
-	if err != nil {
-		return nil, err
-	}
-	b.WithName(node.Name)
-
-	b.WithKind("Node")
-	b.WithAPIVersion("fabric.ironcore.dev/v1alpha1")
-	return b, nil
-}
-
-// ExtractNode extracts the applied configuration owned by fieldManager from
-// node. If no managedFields are found in node for fieldManager, a
-// NodeApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
-// node must be a unmodified Node API object that was retrieved from the Kubernetes API.
-// ExtractNode provides a way to perform a extract/modify-in-place/apply workflow.
-// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
-// applied if another fieldManager has updated or force applied any of the previously applied fields.
-func ExtractNode(node *apiv1alpha1.Node, fieldManager string) (*NodeApplyConfiguration, error) {
-	return ExtractNodeFrom(node, fieldManager, "")
-}
-
-// ExtractNodeStatus extracts the applied configuration owned by fieldManager from
-// node for the status subresource.
-func ExtractNodeStatus(node *apiv1alpha1.Node, fieldManager string) (*NodeApplyConfiguration, error) {
-	return ExtractNodeFrom(node, fieldManager, "status")
 }
 
 func (b NodeApplyConfiguration) IsApplyConfiguration() {}
