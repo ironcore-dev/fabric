@@ -34,6 +34,8 @@ const (
 	CellFailed  CellPhase = "Failed"
 )
 
+const CellConditionTypeBound = "Bound"
+
 // CellStatus defines the observed state of Cell.
 type CellStatus struct {
 	// Phase is the phase a Cell is in.

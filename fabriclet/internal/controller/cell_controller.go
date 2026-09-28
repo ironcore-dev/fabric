@@ -15,6 +15,8 @@ import (
 	"github.com/ironcore-dev/fabric/cellruntime"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -31,7 +33,7 @@ func NodeFinalizer(nodeName string) string {
 	return nodeFinalizerPrefix + nodeName
 }
 
-type CellRuntimeReconciler struct {
+type CellReconciler struct {
 	client.Client
 	events.EventRecorder
 	NodePredicate                    func(node *v1alpha1.Node) bool
@@ -52,7 +54,7 @@ var terminalCellPhases = map[v1alpha1.CellPhase]struct{}{
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=nodes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=fabric.ironcore.dev,resources=interfaces,verbs=get;list;watch
 
-func (r *CellRuntimeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *CellReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	cell := &v1alpha1.Cell{}
 	if err := r.Get(ctx, req.NamespacedName, cell); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -61,7 +63,7 @@ func (r *CellRuntimeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	return r.reconcileExists(ctx, cell)
 }
 
-func (r *CellRuntimeReconciler) reconcileExists(
+func (r *CellReconciler) reconcileExists(
 	ctx context.Context,
 	cell *v1alpha1.Cell,
 ) (ctrl.Result, error) {
@@ -86,7 +88,7 @@ func (r *CellRuntimeReconciler) reconcileExists(
 	return r.reconcile(ctx, node, cell)
 }
 
-func (r *CellRuntimeReconciler) delete(
+func (r *CellReconciler) delete(
 	ctx context.Context,
 	node *v1alpha1.Node,
 	cell *v1alpha1.Cell,
@@ -135,7 +137,7 @@ func (r *CellRuntimeReconciler) delete(
 	return ctrl.Result{RequeueAfter: r.CellRuntimePollImmediateInterval}, nil
 }
 
-func (r *CellRuntimeReconciler) patchClaimNode(ctx context.Context, node *v1alpha1.Node, cell *v1alpha1.Cell) error {
+func (r *CellReconciler) patchClaimNode(ctx context.Context, node *v1alpha1.Node, cell *v1alpha1.Cell) error {
 	base := node.DeepCopy()
 	node.Spec.CellRef = &v1alpha1.NamespacedUIDReference{
 		Namespace: cell.Namespace,
@@ -148,7 +150,7 @@ func (r *CellRuntimeReconciler) patchClaimNode(ctx context.Context, node *v1alph
 	return nil
 }
 
-func (r *CellRuntimeReconciler) applyCellPhase(ctx context.Context, cell *v1alpha1.Cell, phase v1alpha1.CellPhase) error {
+func (r *CellReconciler) applyCellPhase(ctx context.Context, cell *v1alpha1.Cell, phase v1alpha1.CellPhase) error {
 	if phase == cell.Status.Phase {
 		return nil
 	}
@@ -161,7 +163,29 @@ func (r *CellRuntimeReconciler) applyCellPhase(ctx context.Context, cell *v1alph
 	return nil
 }
 
-func (r *CellRuntimeReconciler) reconcile(
+func (r *CellReconciler) applyBoundCondition(
+	ctx context.Context,
+	cell *v1alpha1.Cell,
+	status metav1.ConditionStatus,
+	reason, message string,
+) error {
+	base := cell.DeepCopy()
+	if !meta.SetStatusCondition(&cell.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CellConditionTypeBound,
+		Status:             status,
+		ObservedGeneration: cell.Generation,
+		Reason:             reason,
+		Message:            message,
+	}) {
+		return nil
+	}
+	if err := r.Status().Patch(ctx, cell, client.MergeFrom(base)); err != nil {
+		return fmt.Errorf("patching Cell bound condition: %w", err)
+	}
+	return nil
+}
+
+func (r *CellReconciler) reconcile(
 	ctx context.Context,
 	node *v1alpha1.Node,
 	cell *v1alpha1.Cell,
@@ -176,12 +200,24 @@ func (r *CellRuntimeReconciler) reconcile(
 		}
 
 		log.V(1).Info("Claiming node")
+		if err := r.applyBoundCondition(ctx, cell, metav1.ConditionFalse, "Pending",
+			fmt.Sprintf("Cell is waiting for Fabriclet on Node %q to accept it", node.Name)); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, r.patchClaimNode(ctx, node, cell)
 	}
 
 	if nodeCellRef.Namespace != cell.Namespace || nodeCellRef.Name != cell.Name || nodeCellRef.UID != cell.UID {
 		log.V(1).Info("Node is bound to different cell")
+		if err := r.applyBoundCondition(ctx, cell, metav1.ConditionFalse, "NodeAlreadyBound",
+			fmt.Sprintf("Node %q is already bound to Cell %s/%s", node.Name, nodeCellRef.Namespace, nodeCellRef.Name)); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellPending)
+	}
+	if err := r.applyBoundCondition(ctx, cell, metav1.ConditionTrue, "Bound",
+		fmt.Sprintf("Cell is bound to Node %q", node.Name)); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if _, ok := terminalCellPhases[cell.Status.Phase]; ok {
@@ -250,7 +286,7 @@ func (r *CellRuntimeReconciler) reconcile(
 	return ctrl.Result{RequeueAfter: requeueAfter}, r.applyCellPhase(ctx, cell, cellPhase)
 }
 
-func (r *CellRuntimeReconciler) resolveCellConfig(
+func (r *CellReconciler) resolveCellConfig(
 	ctx context.Context,
 	cell *v1alpha1.Cell,
 ) (*cellruntime.CellConfig, error) {
@@ -321,7 +357,7 @@ const (
 	cellNodeKey = ".spec.nodeRef.name"
 )
 
-func (r *CellRuntimeReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *CellReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Cell{}, cellNodeKey, func(obj client.Object) []string {
 		cell := obj.(*v1alpha1.Cell)
 		nodeName := cell.Spec.NodeRef.Name
@@ -331,7 +367,7 @@ func (r *CellRuntimeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("cell-runtime").
+		Named("cell").
 		For(
 			&v1alpha1.Cell{},
 		).

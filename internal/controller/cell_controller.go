@@ -17,10 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const cellBoundCondition = "Bound"
-
 // CellReconciler reports the binding state of a Cell. The Fabriclet for the
-// Node selected by Cell.spec.nodeRef owns binding and unbinding the Cell.
+// Node selected by Cell.spec.nodeRef owns all binding outcomes once that Node
+// exists.
 type CellReconciler struct {
 	client.Client
 }
@@ -47,22 +46,7 @@ func (r *CellReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, fmt.Errorf("getting Node %s: %w", cell.Spec.NodeRef.Name, err)
 	}
 
-	want := &fabricv1alpha1.NamespacedUIDReference{
-		Namespace: cell.Namespace,
-		Name:      cell.Name,
-		UID:       cell.UID,
-	}
-	if node.Spec.CellRef == nil {
-		return ctrl.Result{}, r.setBoundCondition(ctx, cell, metav1.ConditionFalse, "Unbound",
-			fmt.Sprintf("Cell is waiting for Fabriclet on Node %q to accept it", node.Name))
-	}
-	if *node.Spec.CellRef != *want {
-		return ctrl.Result{}, r.setBoundCondition(ctx, cell, metav1.ConditionFalse, "NodeAlreadyBound",
-			fmt.Sprintf("Node %q is already bound to Cell %s/%s", node.Name, node.Spec.CellRef.Namespace, node.Spec.CellRef.Name))
-	}
-
-	return ctrl.Result{}, r.setBoundCondition(ctx, cell, metav1.ConditionTrue, "Bound",
-		fmt.Sprintf("Cell is bound to Node %q", node.Name))
+	return ctrl.Result{}, nil
 }
 
 func (r *CellReconciler) setBoundCondition(
@@ -73,7 +57,7 @@ func (r *CellReconciler) setBoundCondition(
 ) error {
 	base := cell.DeepCopy()
 	if !meta.SetStatusCondition(&cell.Status.Conditions, metav1.Condition{
-		Type:               cellBoundCondition,
+		Type:               fabricv1alpha1.CellConditionTypeBound,
 		Status:             status,
 		ObservedGeneration: cell.Generation,
 		Reason:             reason,

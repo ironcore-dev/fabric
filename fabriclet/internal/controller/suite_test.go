@@ -131,7 +131,7 @@ var _ = BeforeSuite(func() {
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&CellRuntimeReconciler{
+	err = (&CellReconciler{
 		Client:                           k8sManager.GetClient(),
 		EventRecorder:                    &events.FakeRecorder{},
 		CellRuntime:                      fakeCellRuntime,
