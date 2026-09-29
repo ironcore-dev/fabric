@@ -29,15 +29,19 @@ integrate with `fabric`.
 - `kubectl` and access to a compatible Kubernetes cluster
 
 ### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+
+**Build and push the Fabriclet image:**
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/fabric:tag
+make docker-build-fabriclet docker-push-fabriclet FABRICLET_IMG=<some-registry>/fabriclet:tag
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+**Build and push the controller-manager image:**
+
+```sh
+make docker-build-controller-manager docker-push-controller-manager \
+  CONTROLLER_MANAGER_IMG=<some-registry>/fabric-controller-manager:tag
+```
 
 **Install the CRDs into the cluster:**
 
@@ -45,10 +49,10 @@ Make sure you have the proper permission to the registry if the above commands d
 make install
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+**Deploy the controller manager:**
 
 ```sh
-make deploy IMG=<some-registry>/fabric:tag
+make deploy CONTROLLER_MANAGER_IMG=<some-registry>/fabric-controller-manager:tag
 ```
 
 > **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
@@ -91,7 +95,7 @@ Following the options to release and provide this solution to the users.
 1. Build the installer for the image built and published in the registry:
 
 ```sh
-make build-installer IMG=<some-registry>/fabric:tag
+make build-installer CONTROLLER_MANAGER_IMG=<some-registry>/fabric-controller-manager:tag
 ```
 
 **NOTE:** The makefile target mentioned above generates an 'install.yaml'

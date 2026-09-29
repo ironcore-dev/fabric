@@ -12,10 +12,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+const defaultNamespace = "default"
 
 var _ = Describe("CellController", func() {
 	var (
@@ -51,7 +54,7 @@ var _ = Describe("CellController", func() {
 		By("creating a cell")
 		cell := &v1alpha1.Cell{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:    "default",
+				Namespace:    defaultNamespace,
 				GenerateName: "cell-",
 			},
 			Spec: v1alpha1.CellSpec{
@@ -80,10 +83,20 @@ var _ = Describe("CellController", func() {
 			return client.IgnoreNotFound(k8sClient.Delete(ctx, cell))
 		})
 
-		By("waiting for the cell to be pending and present in the runtime")
+		By("waiting for the Fabriclet to bind and apply the cell")
 		Eventually(func(g Gomega) {
 			g.Expect(k8sClient.Get(ctx, cellKey, cell)).To(Succeed())
+			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(node), node)).To(Succeed())
+			g.Expect(node.Spec.CellRef).To(Equal(&v1alpha1.NamespacedUIDReference{
+				Namespace: cell.Namespace,
+				Name:      cell.Name,
+				UID:       cell.UID,
+			}))
 			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellPending))
+			g.Expect(meta.FindStatusCondition(cell.Status.Conditions, v1alpha1.CellConditionTypeBound)).To(And(
+				HaveField("Status", metav1.ConditionTrue),
+				HaveField("Reason", "Bound"),
+			))
 			g.Expect(controllerutil.ContainsFinalizer(cell, NodeFinalizer(node.Name))).To(BeTrue())
 
 			fakeCellRuntime.RLock()
@@ -144,5 +157,51 @@ var _ = Describe("CellController", func() {
 			defer fakeCellRuntime.RUnlock()
 			g.Expect(fakeCellRuntime.Cells[node.Name]).To(BeNil())
 		}).Should(Succeed())
+	})
+
+	It("reports when the requested Node is bound to another Cell", func(ctx SpecContext) {
+		existingCell := &v1alpha1.Cell{
+			ObjectMeta: metav1.ObjectMeta{Namespace: defaultNamespace, GenerateName: "existing-cell-"},
+			Spec:       v1alpha1.CellSpec{NodeRef: v1alpha1.LocalObjectReference{Name: node.Name}},
+		}
+		Expect(k8sClient.Create(ctx, existingCell)).To(Succeed())
+		DeferCleanup(k8sClient.Delete, existingCell)
+
+		Eventually(func(g Gomega) {
+			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(node), node)).To(Succeed())
+			g.Expect(node.Spec.CellRef).To(Equal(&v1alpha1.NamespacedUIDReference{
+				Namespace: existingCell.Namespace,
+				Name:      existingCell.Name,
+				UID:       existingCell.UID,
+			}))
+		}).Should(Succeed())
+
+		cell := &v1alpha1.Cell{
+			ObjectMeta: metav1.ObjectMeta{Namespace: defaultNamespace, GenerateName: "waiting-cell-"},
+			Spec:       v1alpha1.CellSpec{NodeRef: v1alpha1.LocalObjectReference{Name: node.Name}},
+		}
+		Expect(k8sClient.Create(ctx, cell)).To(Succeed())
+		DeferCleanup(k8sClient.Delete, cell)
+
+		Eventually(func(g Gomega) {
+			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(cell), cell)).To(Succeed())
+			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellPending))
+			g.Expect(meta.FindStatusCondition(cell.Status.Conditions, v1alpha1.CellConditionTypeBound)).To(And(
+				HaveField("Status", metav1.ConditionFalse),
+				HaveField("Reason", "NodeAlreadyBound"),
+			))
+		}).Should(Succeed())
+	})
+
+	It("should reject changing the cell node reference", func(ctx SpecContext) {
+		cell := &v1alpha1.Cell{
+			ObjectMeta: metav1.ObjectMeta{Namespace: defaultNamespace, GenerateName: "cell-"},
+			Spec:       v1alpha1.CellSpec{NodeRef: v1alpha1.LocalObjectReference{Name: node.Name}},
+		}
+		Expect(k8sClient.Create(ctx, cell)).To(Succeed())
+		DeferCleanup(k8sClient.Delete, cell)
+
+		cell.Spec.NodeRef.Name = "another-node"
+		Expect(k8sClient.Update(ctx, cell)).NotTo(Succeed())
 	})
 })

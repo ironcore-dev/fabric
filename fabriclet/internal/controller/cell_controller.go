@@ -15,6 +15,8 @@ import (
 	"github.com/ironcore-dev/fabric/cellruntime"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -142,7 +144,7 @@ func (r *CellReconciler) patchClaimNode(ctx context.Context, node *v1alpha1.Node
 		Name:      cell.Name,
 		UID:       cell.UID,
 	}
-	if err := r.Patch(ctx, node, client.MergeFrom(base)); err != nil {
+	if err := r.Patch(ctx, node, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{})); err != nil {
 		return fmt.Errorf("patching node: %w", err)
 	}
 	return nil
@@ -157,6 +159,28 @@ func (r *CellReconciler) applyCellPhase(ctx context.Context, cell *v1alpha1.Cell
 	cell.Status.Phase = phase
 	if err := r.Status().Patch(ctx, cell, client.MergeFrom(base)); err != nil {
 		return fmt.Errorf("patching cell: %w", err)
+	}
+	return nil
+}
+
+func (r *CellReconciler) applyBoundCondition(
+	ctx context.Context,
+	cell *v1alpha1.Cell,
+	status metav1.ConditionStatus,
+	reason, message string,
+) error {
+	base := cell.DeepCopy()
+	if !meta.SetStatusCondition(&cell.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CellConditionTypeBound,
+		Status:             status,
+		ObservedGeneration: cell.Generation,
+		Reason:             reason,
+		Message:            message,
+	}) {
+		return nil
+	}
+	if err := r.Status().Patch(ctx, cell, client.MergeFrom(base)); err != nil {
+		return fmt.Errorf("patching Cell bound condition: %w", err)
 	}
 	return nil
 }
@@ -176,12 +200,24 @@ func (r *CellReconciler) reconcile(
 		}
 
 		log.V(1).Info("Claiming node")
+		if err := r.applyBoundCondition(ctx, cell, metav1.ConditionFalse, "Pending",
+			fmt.Sprintf("Cell is waiting for Fabriclet on Node %q to accept it", node.Name)); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, r.patchClaimNode(ctx, node, cell)
 	}
 
 	if nodeCellRef.Namespace != cell.Namespace || nodeCellRef.Name != cell.Name || nodeCellRef.UID != cell.UID {
 		log.V(1).Info("Node is bound to different cell")
+		if err := r.applyBoundCondition(ctx, cell, metav1.ConditionFalse, "NodeAlreadyBound",
+			fmt.Sprintf("Node %q is already bound to Cell %s/%s", node.Name, nodeCellRef.Namespace, nodeCellRef.Name)); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, r.applyCellPhase(ctx, cell, v1alpha1.CellPending)
+	}
+	if err := r.applyBoundCondition(ctx, cell, metav1.ConditionTrue, "Bound",
+		fmt.Sprintf("Cell is bound to Node %q", node.Name)); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if _, ok := terminalCellPhases[cell.Status.Phase]; ok {
@@ -331,6 +367,7 @@ func (r *CellReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("cell").
 		For(
 			&v1alpha1.Cell{},
 		).

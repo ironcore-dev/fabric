@@ -157,9 +157,9 @@ Tests use **Ginkgo + Gomega** (BDD style). Check `suite_test.go` for setup.
 make manifests generate
 
 # 2. Build & deploy
-export IMG=<registry>/<project>:tag
-make docker-build docker-push IMG=$IMG  # Or: kind load docker-image $IMG --name <cluster>
-make deploy IMG=$IMG
+export CONTROLLER_MANAGER_IMG=<registry>/fabric-controller-manager:tag
+make docker-build-controller-manager docker-push-controller-manager CONTROLLER_MANAGER_IMG=$CONTROLLER_MANAGER_IMG
+make deploy CONTROLLER_MANAGER_IMG=$CONTROLLER_MANAGER_IMG
 
 # 3. Test
 kubectl apply -k config/samples/
@@ -254,7 +254,7 @@ Generated code includes: status conditions (`metav1.Condition`), finalizers, own
 
 ```bash
 # Generate dist/install.yaml from Kustomize manifests
-make build-installer IMG=<registry>/<project>:tag
+make build-installer CONTROLLER_MANAGER_IMG=<registry>/fabric-controller-manager:tag
 ```
 
 **Key points:**
@@ -276,8 +276,8 @@ kubebuilder edit --plugins=helm/v2-alpha --output-dir=charts  # Generates charts
 
 **For development:**
 ```bash
-make helm-deploy IMG=<registry>/<project>:<tag>          # Deploy manager via Helm
-make helm-deploy IMG=$IMG HELM_EXTRA_ARGS="--set ..."    # Deploy with custom values
+make helm-deploy CONTROLLER_MANAGER_IMG=<registry>/fabric-controller-manager:<tag> # Deploy manager via Helm
+make helm-deploy CONTROLLER_MANAGER_IMG=$CONTROLLER_MANAGER_IMG HELM_EXTRA_ARGS="--set ..."
 make helm-status                                         # Show release status
 make helm-uninstall                                      # Remove release
 make helm-history                                        # View release history
@@ -297,8 +297,8 @@ helm install my-release ./<output-dir>/chart/ --namespace <ns> --create-namespac
 ### Publish Container Image
 
 ```bash
-export IMG=<registry>/<project>:<version>
-make docker-build docker-push IMG=$IMG
+export FABRICLET_IMG=<registry>/fabriclet:<version>
+make docker-build-fabriclet docker-push-fabriclet FABRICLET_IMG=$FABRICLET_IMG
 ```
 
 ## References

@@ -42,7 +42,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err := r.Get(ctx, req.NamespacedName, node); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if r.NodePredicate != nil && r.NodePredicate(node) {
+	if r.NodePredicate != nil && !r.NodePredicate(node) {
 		return ctrl.Result{}, nil
 	}
 	if !node.DeletionTimestamp.IsZero() {
@@ -141,11 +141,7 @@ func (r *NodeReconciler) enqueueByCell() handler.EventHandler {
 		var reqs []reconcile.Request
 		for _, node := range nodeList.Items {
 			cellRef := node.Spec.CellRef
-			if cellRef == nil {
-				continue
-			}
-
-			if cellRef.UID != cell.UID {
+			if cellRef == nil || cellRef.UID != cell.UID {
 				continue
 			}
 
