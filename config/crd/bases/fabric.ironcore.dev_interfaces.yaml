@@ -21,6 +21,9 @@ spec:
     - jsonPath: .spec.handle
       name: Handle
       type: string
+    - jsonPath: .spec.adminState
+      name: Admin
+      type: string
     - jsonPath: .status.operationState
       name: State
       type: string
