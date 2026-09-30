@@ -18,8 +18,14 @@ spec:
     - jsonPath: .spec.nodeRef.name
       name: Node
       type: string
-    - jsonPath: .spec.phase
+    - jsonPath: .spec.id
+      name: ID
+      type: string
+    - jsonPath: .status.phase
       name: State
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Bound")].status
+      name: Bound
       type: string
     name: v1alpha1
     schema:

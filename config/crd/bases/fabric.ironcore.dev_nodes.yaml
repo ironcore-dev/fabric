@@ -14,7 +14,17 @@ spec:
     singular: node
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.providerID
+      name: Provider
+      type: string
+    - jsonPath: .spec.cellRef.name
+      name: Cell
+      type: string
+    - jsonPath: .spec.cellRef.namespace
+      name: Cell Namespace
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Node is the Schema for the nodes API
