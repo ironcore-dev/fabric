@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/onsi/ginkgo/v2 v2.33.0
-	github.com/onsi/gomega v1.43.1
+	github.com/onsi/gomega v1.44.0
 	github.com/spf13/pflag v1.0.10
 	k8s.io/api v0.35.0
 	k8s.io/apimachinery v0.35.0
