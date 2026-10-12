@@ -344,6 +344,7 @@ func (r *CellReconciler) resolveCellConfig(
 			Namespace: cell.Namespace,
 			Name:      cell.Name,
 			UID:       string(cell.UID),
+			Labels:    cell.Labels,
 		},
 		ID:          cell.Spec.ID,
 		Hostname:    cell.Spec.Hostname,

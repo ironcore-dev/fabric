@@ -13,6 +13,7 @@ type CellMetadata struct {
 	Namespace string
 	Name      string
 	UID       string
+	Labels    map[string]string
 }
 
 type CellConfig struct {

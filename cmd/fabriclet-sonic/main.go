@@ -4,9 +4,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/ironcore-dev/fabric/api/v1alpha1"
+	"github.com/ironcore-dev/fabric/cellruntime"
 	"github.com/ironcore-dev/fabric/fabriclet/cli"
 	"github.com/ironcore-dev/fabric/sonic"
 	"github.com/spf13/pflag"
@@ -17,11 +19,12 @@ import (
 
 func main() {
 	var flags cli.Flags
-	var name string
+	var name, backend string
 	var interfaces []string
 
 	flags.AddFlags(pflag.CommandLine)
 	pflag.StringVar(&name, "name", name, "Name of the node")
+	pflag.StringVar(&backend, "backend", "script", "Runtime implementation to use (script, configdb)")
 	pflag.StringSliceVarP(&interfaces, "interface", "I", interfaces, "Names of the interfaces to reconcile")
 
 	pflag.Parse()
@@ -36,7 +39,16 @@ func main() {
 
 	interfaceSet := sets.New(interfaces...)
 
-	prov, err := sonic.NewRuntime()
+	var prov cellruntime.Runtime
+	var err error
+	switch backend {
+	case "script":
+		prov = sonic.NewScriptRuntime()
+	case "configdb":
+		prov = sonic.NewConfigDBRuntime()
+	default:
+		err = fmt.Errorf("unknown backend %q", backend)
+	}
 	if err != nil {
 		setupLog.Error(err, "Error creating sonic runtime")
 		os.Exit(1)
