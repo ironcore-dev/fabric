@@ -12,18 +12,8 @@ import (
 	sonicconfigdb "github.com/ironcore-dev/fabric/sonic/configdb"
 )
 
-const emptyFRRTemplate = `frr version 8.1
-frr defaults traditional
-hostname %s
-log syslog informational
-service integrated-vtysh-config
-`
-
 type hostOperations interface {
-	WriteFRR(ctx context.Context, data []byte) error
 	SaveConfig(ctx context.Context) error
-	RestartBGP(ctx context.Context) error
-	Hostname(ctx context.Context) (string, error)
 	CellApplied(ctx context.Context) (bool, error)
 	MarkCellApplied(ctx context.Context) error
 	ClearCellApplied(ctx context.Context) error
@@ -94,19 +84,19 @@ func (r *ConfigDBRuntime) ApplyCell(ctx context.Context, _ string, cfg *cellrunt
 			return fmt.Errorf("enabling link-local on port %s: %w", port, err)
 		}
 	}
-
-	frr, err := renderFRR(desired)
-	if err != nil {
-		return err
+	if desired.ASN <= 0 || desired.ASN > int64(^uint32(0)) {
+		return cellruntime.TerminalError(fmt.Errorf("BGP ASN %d is outside the uint32 range", desired.ASN))
 	}
-	if err := r.host.WriteFRR(ctx, frr); err != nil {
-		return fmt.Errorf("writing FRR configuration: %w", err)
+	if err := r.db.EnsureBGP(ctx, sonicconfigdb.BGPConfig{
+		ASN:       uint32(desired.ASN),
+		RouterID:  desired.RouterID,
+		Prefix:    desired.Summary,
+		Neighbors: desired.FabricPorts,
+	}); err != nil {
+		return fmt.Errorf("configuring BGP: %w", err)
 	}
 	if err := r.host.SaveConfig(ctx); err != nil {
 		return fmt.Errorf("saving SONiC configuration: %w", err)
-	}
-	if err := r.host.RestartBGP(ctx); err != nil {
-		return fmt.Errorf("restarting BGP: %w", err)
 	}
 	if err := r.host.MarkCellApplied(ctx); err != nil {
 		return fmt.Errorf("marking cell applied: %w", err)
@@ -131,17 +121,6 @@ func (r *ConfigDBRuntime) DeleteCell(ctx context.Context, node string) error {
 	}
 	if err := r.host.SaveConfig(ctx); err != nil {
 		return fmt.Errorf("saving SONiC configuration: %w", err)
-	}
-	hostname, err := r.host.Hostname(ctx)
-	if err != nil {
-		return fmt.Errorf("reading switch hostname: %w", err)
-	}
-	frr := fmt.Appendf(nil, emptyFRRTemplate, hostname)
-	if err := r.host.WriteFRR(ctx, frr); err != nil {
-		return fmt.Errorf("writing FRR configuration: %w", err)
-	}
-	if err := r.host.RestartBGP(ctx); err != nil {
-		return fmt.Errorf("restarting BGP: %w", err)
 	}
 	if err := r.host.ClearCellApplied(ctx); err != nil {
 		return fmt.Errorf("clearing cell marker: %w", err)

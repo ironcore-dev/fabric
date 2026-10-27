@@ -35,12 +35,20 @@ type VLANConfig struct {
 	DHCPRelay string
 }
 
+type BGPConfig struct {
+	ASN       uint32
+	RouterID  string
+	Prefix    string
+	Neighbors []string
+}
+
 type DB interface {
 	SetHostname(ctx context.Context, hostname string) error
 	EnsureLoopback(ctx context.Context, name string, prefixes []string) error
 	EnsurePort(ctx context.Context, name string, cfg PortConfig) error
 	EnsureVLAN(ctx context.Context, cfg VLANConfig) error
 	EnableLinkLocal(ctx context.Context, interfaceName string) error
+	EnsureBGP(ctx context.Context, cfg BGPConfig) error
 	InterfaceOperUp(ctx context.Context, interfaceName string) (bool, error)
 	SetInterfaceAdminState(ctx context.Context, interfaceName string, up bool) error
 	Reset(ctx context.Context) error
@@ -179,6 +187,83 @@ func (c *Client) EnableLinkLocal(ctx context.Context, interfaceName string) erro
 	return nil
 }
 
+func (c *Client) EnsureBGP(ctx context.Context, cfg BGPConfig) error {
+	if cfg.ASN == 0 {
+		return fmt.Errorf("BGP ASN must not be zero")
+	}
+	routerID, err := netip.ParseAddr(cfg.RouterID)
+	if err != nil || !routerID.Is4() {
+		return fmt.Errorf("invalid BGP router ID %q", cfg.RouterID)
+	}
+	prefix, err := netip.ParsePrefix(cfg.Prefix)
+	if err != nil || !prefix.Addr().Is6() {
+		return fmt.Errorf("invalid BGP IPv6 prefix %q", cfg.Prefix)
+	}
+	if len(cfg.Neighbors) == 0 {
+		return fmt.Errorf("BGP must have at least one neighbor")
+	}
+	for _, neighbor := range cfg.Neighbors {
+		if err := validatePortName(neighbor); err != nil {
+			return fmt.Errorf("invalid BGP neighbor: %w", err)
+		}
+	}
+
+	for _, pattern := range []string{
+		"BGP_NEIGHBOR_AF|*",
+		"BGP_NEIGHBOR|*",
+		"BGP_GLOBALS_AF_NETWORK|*",
+		"BGP_GLOBALS|*",
+		"ROUTE_MAP|*",
+	} {
+		if err := c.deleteMatching(ctx, pattern); err != nil {
+			return err
+		}
+	}
+	if err := c.config.HSet(ctx, "DEVICE_METADATA|localhost", "frr_mgmt_framework_config", "true").Err(); err != nil {
+		return fmt.Errorf("enabling FRR management framework: %w", err)
+	}
+	if err := c.config.HSet(ctx, "BGP_GLOBALS|default",
+		"local_asn", strconv.FormatUint(uint64(cfg.ASN), 10),
+		"router_id", cfg.RouterID,
+		"default_ipv4_unicast", "false",
+		"network_import_check", "false",
+		"load_balance_mp_relax", "true",
+	).Err(); err != nil {
+		return fmt.Errorf("configuring BGP globals: %w", err)
+	}
+	for _, routeMap := range []string{"RM_FABRIC_IN", "RM_FABRIC_OUT"} {
+		if err := c.config.HSet(ctx, "ROUTE_MAP|"+routeMap+"|10",
+			"route_operation", "permit",
+		).Err(); err != nil {
+			return fmt.Errorf("configuring BGP route map %s: %w", routeMap, err)
+		}
+	}
+	for _, neighbor := range cfg.Neighbors {
+		if err := c.config.HSet(ctx, "BGP_NEIGHBOR|default|"+neighbor,
+			"peer_type", "external",
+			"keepalive", "3",
+			"holdtime", "9",
+			"conn_retry", "20",
+		).Err(); err != nil {
+			return fmt.Errorf("configuring BGP neighbor %s: %w", neighbor, err)
+		}
+		if err := c.config.HSet(ctx, "BGP_NEIGHBOR_AF|default|"+neighbor+"|ipv6_unicast",
+			"admin_status", "true",
+			"route_map_in@", "RM_FABRIC_IN",
+			"route_map_out@", "RM_FABRIC_OUT",
+		).Err(); err != nil {
+			return fmt.Errorf("activating IPv6 for BGP neighbor %s: %w", neighbor, err)
+		}
+	}
+	if err := c.config.HSet(ctx,
+		"BGP_GLOBALS_AF_NETWORK|default|ipv6_unicast|"+prefix.String(),
+		"backdoor", "false",
+	).Err(); err != nil {
+		return fmt.Errorf("advertising BGP prefix %s: %w", prefix, err)
+	}
+	return nil
+}
+
 func (c *Client) InterfaceOperUp(ctx context.Context, interfaceName string) (bool, error) {
 	if err := validatePortName(interfaceName); err != nil {
 		return false, err
@@ -208,6 +293,17 @@ func (c *Client) SetInterfaceAdminState(ctx context.Context, interfaceName strin
 }
 
 func (c *Client) Reset(ctx context.Context) error {
+	for _, pattern := range []string{
+		"BGP_NEIGHBOR_AF|*",
+		"BGP_NEIGHBOR|*",
+		"BGP_GLOBALS_AF_NETWORK|*",
+		"BGP_GLOBALS|*",
+		"ROUTE_MAP|*",
+	} {
+		if err := c.deleteMatching(ctx, pattern); err != nil {
+			return err
+		}
+	}
 	if err := c.deleteMatching(ctx, "LOOPBACK_INTERFACE|*|*"); err != nil {
 		return err
 	}

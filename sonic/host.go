@@ -4,7 +4,6 @@
 package sonic
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,33 +13,8 @@ import (
 
 type systemHostOperations struct{}
 
-func (h *systemHostOperations) WriteFRR(ctx context.Context, data []byte) error {
-	cmd := hostCommand(ctx, "tee", "/etc/sonic/frr/frr.conf")
-	cmd.Stdin = bytes.NewReader(data)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return commandError("writing /etc/sonic/frr/frr.conf", out, err)
-	}
-	return nil
-}
-
 func (h *systemHostOperations) SaveConfig(ctx context.Context) error {
 	return runHostCommand(ctx, "saving SONiC configuration", "config", "save", "-y")
-}
-
-func (h *systemHostOperations) RestartBGP(ctx context.Context) error {
-	return runHostCommand(ctx, "restarting BGP", "systemctl", "restart", "bgp")
-}
-
-func (h *systemHostOperations) Hostname(ctx context.Context) (string, error) {
-	out, err := hostCommand(ctx, "hostname").CombinedOutput()
-	if err != nil {
-		return "", commandError("reading hostname", out, err)
-	}
-	hostname := strings.TrimSpace(string(out))
-	if hostname == "" {
-		return "", fmt.Errorf("reading hostname: empty output")
-	}
-	return hostname, nil
 }
 
 func (h *systemHostOperations) CellApplied(ctx context.Context) (bool, error) {

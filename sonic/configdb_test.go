@@ -4,11 +4,8 @@
 package sonic
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -26,18 +23,12 @@ const (
 	testHostnameField    = "hostname"
 	testPort0Key         = "PORT|Ethernet0"
 	testLinkLocalValue   = "enable"
-	testRestartBGPCall   = "restart-bgp"
 	testSaveCall         = "save"
-	testWriteFRRCall     = "write-frr"
 	testDatabaseFailure  = "database"
 	testNullValue        = "NULL"
 	testEthernet4        = "Ethernet4"
-	wantEmptyFRR         = `frr version 8.1
-frr defaults traditional
-hostname leaf-42
-log syslog informational
-service integrated-vtysh-config
-`
+	testAdminStatusField = "admin_status"
+	testTrueValue        = "true"
 )
 
 type fakeHostOperations struct {
@@ -45,7 +36,6 @@ type fakeHostOperations struct {
 	fail     string
 	hostname string
 	calls    []string
-	frr      []byte
 }
 
 func (f *fakeHostOperations) record(name string) error {
@@ -56,22 +46,7 @@ func (f *fakeHostOperations) record(name string) error {
 	return nil
 }
 
-func (f *fakeHostOperations) WriteFRR(_ context.Context, data []byte) error {
-	if err := f.record("write-frr"); err != nil {
-		return err
-	}
-	f.frr = append([]byte(nil), data...)
-	return nil
-}
-
 func (f *fakeHostOperations) SaveConfig(context.Context) error { return f.record("save") }
-func (f *fakeHostOperations) RestartBGP(context.Context) error { return f.record("restart-bgp") }
-func (f *fakeHostOperations) Hostname(context.Context) (string, error) {
-	if err := f.record("hostname"); err != nil {
-		return "", err
-	}
-	return f.hostname, nil
-}
 func (f *fakeHostOperations) CellApplied(context.Context) (bool, error) {
 	if err := f.record("cell-applied"); err != nil {
 		return false, err
@@ -135,7 +110,7 @@ func TestConfigDBRuntimeApplyLeaf(t *testing.T) {
 		{testPort0Key, "speed", "100000"},
 		{testPort0Key, "mtu", "9100"},
 		{testPort0Key, "fec", "rs"},
-		{testPort0Key, "admin_status", "up"},
+		{testPort0Key, testAdminStatusField, "up"},
 		{"VLAN|Vlan1001", "dhcp_servers@", testDHCPRelayAddress},
 		{"VLAN_MEMBER|Vlan1001|Ethernet0", "tagging_mode", "untagged"},
 		{"INTERFACE|" + testFabricPort, "ipv6_use_link_local_only", testLinkLocalValue},
@@ -159,11 +134,7 @@ func TestConfigDBRuntimeApplyLeaf(t *testing.T) {
 		t.Errorf("loopback prefix exists = %d, err = %v", loopbackExists, err)
 	}
 
-	wantFRR := goldenFRR(t, RoleLeaf)
-	if !bytes.Equal(fixture.host.frr, wantFRR) {
-		t.Errorf("FRR config differs from leaf golden output")
-	}
-	wantCalls := []string{testWriteFRRCall, testSaveCall, testRestartBGPCall, "mark-applied", "reboot"}
+	wantCalls := []string{testSaveCall, "mark-applied", "reboot"}
 	if len(fixture.host.calls) != len(wantCalls) {
 		t.Fatalf("host calls = %v, want %v", fixture.host.calls, wantCalls)
 	}
@@ -201,8 +172,38 @@ func TestConfigDBRuntimeApplySpineDoesNotCreateVLANs(t *testing.T) {
 			t.Errorf("link-local %s = %q, err = %v", port, value, err)
 		}
 	}
-	if want := goldenFRR(t, RoleSpine); !bytes.Equal(fixture.host.frr, want) {
-		t.Error("FRR config differs from spine golden output")
+}
+
+func TestConfigDBRuntimeApplyPersistsBGPInConfigDB(t *testing.T) {
+	ctx := context.Background()
+	fixture := newConfigDBRuntimeFixture(t)
+	if err := fixture.runtime.ApplyCell(ctx, "leaf-42", testCell(testLeafHostname)); err != nil {
+		t.Fatalf("applying leaf cell: %v", err)
+	}
+
+	checks := []struct{ key, field, want string }{
+		{"DEVICE_METADATA|localhost", "frr_mgmt_framework_config", testTrueValue},
+		{"BGP_GLOBALS|default", "local_asn", "4211000042"},
+		{"BGP_GLOBALS|default", "router_id", "1.0.0.42"},
+		{"BGP_NEIGHBOR|default|" + testFabricPort, "peer_type", "external"},
+		{"BGP_NEIGHBOR_AF|default|" + testFabricPort + "|ipv6_unicast", testAdminStatusField, testTrueValue},
+		{"BGP_NEIGHBOR_AF|default|" + testFabricPort + "|ipv6_unicast", "route_map_in@", "RM_FABRIC_IN"},
+		{"BGP_NEIGHBOR_AF|default|" + testFabricPort + "|ipv6_unicast", "route_map_out@", "RM_FABRIC_OUT"},
+		{"BGP_NEIGHBOR|default|" + testFabricPort2, "peer_type", "external"},
+		{"BGP_NEIGHBOR_AF|default|" + testFabricPort2 + "|ipv6_unicast", testAdminStatusField, testTrueValue},
+		{"ROUTE_MAP|RM_FABRIC_IN|10", "route_operation", "permit"},
+		{"ROUTE_MAP|RM_FABRIC_OUT|10", "route_operation", "permit"},
+		{"BGP_GLOBALS_AF_NETWORK|default|ipv6_unicast|fd00:1234:5678:f2::/64", "backdoor", "false"},
+	}
+	for _, check := range checks {
+		got, err := fixture.config.HGet(ctx, check.key, check.field).Result()
+		if err != nil {
+			t.Errorf("reading %s %s: %v", check.key, check.field, err)
+			continue
+		}
+		if got != check.want {
+			t.Errorf("%s %s = %q, want %q", check.key, check.field, got, check.want)
+		}
 	}
 }
 
@@ -221,7 +222,7 @@ func TestConfigDBRuntimeRejectsInvalidFabricPort(t *testing.T) {
 }
 
 func TestConfigDBRuntimeApplyDoesNotMarkFailedApply(t *testing.T) {
-	for _, failure := range []string{testDatabaseFailure, "write-frr", "save", testRestartBGPCall} {
+	for _, failure := range []string{testDatabaseFailure, "save"} {
 		t.Run(failure, func(t *testing.T) {
 			fixture := newConfigDBRuntimeFixture(t)
 			if failure == testDatabaseFailure {
@@ -249,7 +250,7 @@ func TestConfigDBRuntimeDeleteResetsCellConfiguration(t *testing.T) {
 		"VLAN|Vlan1001":                                {"vlanid": "1001"},
 		"VLAN_INTERFACE|Vlan1001":                      {testNullValue: testNullValue},
 		"VLAN_MEMBER|Vlan1001|Ethernet0":               {"tagging_mode": "untagged"},
-		testPort0Key:                                   {"admin_status": "up", "speed": "100000"},
+		testPort0Key:                                   {testAdminStatusField: "up", "speed": "100000"},
 	} {
 		values := make([]any, 0, len(fields)*2)
 		for field, value := range fields {
@@ -273,19 +274,14 @@ func TestConfigDBRuntimeDeleteResetsCellConfiguration(t *testing.T) {
 			t.Errorf("keys matching %s = %v, want none", pattern, keys)
 		}
 	}
-	if status, err := fixture.config.HGet(ctx, testPort0Key, "admin_status").Result(); err != nil || status != "down" {
+	status, err := fixture.config.HGet(ctx, testPort0Key, testAdminStatusField).Result()
+	if err != nil || status != "down" {
 		t.Errorf("port admin status = %q, err = %v; want down", status, err)
 	}
 	if speed, err := fixture.config.HGet(ctx, testPort0Key, "speed").Result(); err != nil || speed != "100000" {
 		t.Errorf("port speed = %q, err = %v; want retained 100000", speed, err)
 	}
-	wantFRR := []byte(wantEmptyFRR)
-	if !bytes.Equal(fixture.host.frr, wantFRR) {
-		t.Errorf("empty FRR config = %q, want %q", fixture.host.frr, wantFRR)
-	}
-	wantCalls := []string{
-		"cell-applied", testSaveCall, testHostnameField, testWriteFRRCall, testRestartBGPCall, "clear-applied", "reboot",
-	}
+	wantCalls := []string{"cell-applied", testSaveCall, "clear-applied", "reboot"}
 	if len(fixture.host.calls) != len(wantCalls) {
 		t.Fatalf("host calls = %v, want %v", fixture.host.calls, wantCalls)
 	}
@@ -311,9 +307,7 @@ func TestConfigDBRuntimeDeleteAbsentCell(t *testing.T) {
 }
 
 func TestConfigDBRuntimeDeleteRetainsMarkerOnFailure(t *testing.T) {
-	for _, failure := range []string{
-		testDatabaseFailure, testSaveCall, testHostnameField, testWriteFRRCall, testRestartBGPCall, "clear-applied",
-	} {
+	for _, failure := range []string{testDatabaseFailure, testSaveCall, "clear-applied"} {
 		t.Run(failure, func(t *testing.T) {
 			fixture := newConfigDBRuntimeFixture(t)
 			fixture.host.applied = true
@@ -370,7 +364,7 @@ func TestConfigDBRuntimeInterfaceState(t *testing.T) {
 	if err := fixture.runtime.SetInterfaceAdminState(ctx, testEthernet4, false); err != nil {
 		t.Fatalf("setting admin state: %v", err)
 	}
-	value, err := fixture.config.HGet(ctx, "PORT|"+testEthernet4, "admin_status").Result()
+	value, err := fixture.config.HGet(ctx, "PORT|"+testEthernet4, testAdminStatusField).Result()
 	if err != nil || value != "down" {
 		t.Errorf("admin state = %q, err = %v; want down", value, err)
 	}
@@ -382,20 +376,4 @@ func TestHostCommandEntersHostUTSNamespace(t *testing.T) {
 	if got := strings.Join(cmd.Args, " "); got != want {
 		t.Errorf("host command = %q, want %q", got, want)
 	}
-}
-
-func goldenFRR(t *testing.T, name string) []byte {
-	t.Helper()
-	script, err := os.ReadFile(filepath.Join("testdata", name+".golden.sh"))
-	if err != nil {
-		t.Fatalf("reading golden script: %v", err)
-	}
-	startMarker := []byte("cat <<EOF >/etc/sonic/frr/frr.conf\n")
-	endMarker := []byte("EOF\n\n    # Restart BGP")
-	start := bytes.Index(script, startMarker)
-	end := bytes.Index(script, endMarker)
-	if start < 0 || end < start {
-		t.Fatal("golden script does not contain FRR config")
-	}
-	return script[start+len(startMarker) : end]
 }

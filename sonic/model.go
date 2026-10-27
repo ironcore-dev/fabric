@@ -4,19 +4,13 @@
 package sonic
 
 import (
-	"bytes"
-	"embed"
 	"fmt"
 	"net/netip"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/ironcore-dev/fabric/cellruntime"
 )
-
-//go:embed templates/frr.conf
-var configDBTemplates embed.FS
 
 type configDBSouthPort struct {
 	Port  string
@@ -118,18 +112,6 @@ func resolveSwitchConfig(cfg *cellruntime.CellConfig) (*switchConfig, error) {
 	}
 
 	return data, nil
-}
-
-func renderFRR(cfg *switchConfig) ([]byte, error) {
-	tmpl, err := template.ParseFS(configDBTemplates, "templates/frr.conf")
-	if err != nil {
-		return nil, fmt.Errorf("parsing FRR template: %w", err)
-	}
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "frr.conf", cfg); err != nil {
-		return nil, fmt.Errorf("rendering FRR config: %w", err)
-	}
-	return buf.Bytes(), nil
 }
 
 func configDBTerminalCellErrorf(cell, format string, args ...any) error {

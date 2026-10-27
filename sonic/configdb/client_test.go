@@ -70,6 +70,21 @@ const (
 	testVLANMember        = "VLAN_MEMBER|Vlan1001|Ethernet0"
 	testEthernetInterface = "INTERFACE|Ethernet108"
 	testLinkLocalEnabled  = "enable"
+	testBGPASN            = uint32(4211000042)
+	testBGPRouterID       = "1.0.0.42"
+	testBGPPrefix         = "fd00:1234:5678:f2::/64"
+	testDeviceMetadataKey = "DEVICE_METADATA|localhost"
+	testBGPGlobalsKey     = "BGP_GLOBALS|default"
+	testBGPNeighbor108Key = "BGP_NEIGHBOR|default|Ethernet108"
+	testBGPNeighborAF108  = "BGP_NEIGHBOR_AF|default|Ethernet108|ipv6_unicast"
+	testFalse             = "false"
+	testTrue              = "true"
+	testExternal          = "external"
+	testPeerType          = "peer_type"
+	testPermit            = "permit"
+	testRouteOperation    = "route_operation"
+	testRouteMapInKey     = "ROUTE_MAP|RM_FABRIC_IN|10"
+	testRouteMapOutKey    = "ROUTE_MAP|RM_FABRIC_OUT|10"
 )
 
 func newTestDB(t *testing.T) (context.Context, DB, *redis.Client, *redis.Client) {
@@ -228,6 +243,51 @@ func TestEnableLinkLocalUsesInterfaceSpecificTable(t *testing.T) {
 	}
 }
 
+func TestEnsureBGPWritesPersistentUnnumberedIPv6Configuration(t *testing.T) {
+	ctx, db, config, _ := newTestDB(t)
+	if err := db.EnsureBGP(ctx, BGPConfig{
+		ASN:       testBGPASN,
+		RouterID:  testBGPRouterID,
+		Prefix:    testBGPPrefix,
+		Neighbors: []string{"Ethernet108", "Ethernet112"},
+	}); err != nil {
+		t.Fatalf("ensuring BGP: %v", err)
+	}
+
+	checks := []struct {
+		key, field, want string
+	}{
+		{testDeviceMetadataKey, "frr_mgmt_framework_config", testTrue},
+		{testBGPGlobalsKey, "local_asn", "4211000042"},
+		{testBGPGlobalsKey, "router_id", testBGPRouterID},
+		{testBGPGlobalsKey, "default_ipv4_unicast", testFalse},
+		{testBGPGlobalsKey, "network_import_check", testFalse},
+		{testBGPGlobalsKey, "load_balance_mp_relax", testTrue},
+		{testBGPNeighbor108Key, testPeerType, testExternal},
+		{testBGPNeighbor108Key, "keepalive", "3"},
+		{testBGPNeighbor108Key, "holdtime", "9"},
+		{testBGPNeighbor108Key, "conn_retry", "20"},
+		{testBGPNeighborAF108, testAdminStatus, testTrue},
+		{testBGPNeighborAF108, "route_map_in@", "RM_FABRIC_IN"},
+		{testBGPNeighborAF108, "route_map_out@", "RM_FABRIC_OUT"},
+		{"BGP_NEIGHBOR|default|Ethernet112", testPeerType, testExternal},
+		{"BGP_NEIGHBOR_AF|default|Ethernet112|ipv6_unicast", testAdminStatus, testTrue},
+		{testRouteMapInKey, testRouteOperation, testPermit},
+		{testRouteMapOutKey, testRouteOperation, testPermit},
+		{"BGP_GLOBALS_AF_NETWORK|default|ipv6_unicast|" + testBGPPrefix, "backdoor", testFalse},
+	}
+	for _, check := range checks {
+		got, err := config.HGet(ctx, check.key, check.field).Result()
+		if err != nil {
+			t.Errorf("reading %s %s: %v", check.key, check.field, err)
+			continue
+		}
+		if got != check.want {
+			t.Errorf("%s %s = %q, want %q", check.key, check.field, got, check.want)
+		}
+	}
+}
+
 func TestInterfaceStateUsesApplDBAndAdminStateUsesConfigDB(t *testing.T) {
 	ctx, db, config, appl := newTestDB(t)
 	if err := appl.HSet(ctx, "PORT_TABLE:Ethernet112", "oper_status", "up").Err(); err != nil {
@@ -269,7 +329,7 @@ func TestInterfaceOperationsRejectUnknownNames(t *testing.T) {
 func TestResetRemovesCellConfigurationAndRetainsPhysicalSettings(t *testing.T) {
 	ctx, db, config, _ := newTestDB(t)
 	seed := map[string]map[string]string{
-		"DEVICE_METADATA|localhost":        {"hostname": "leaf-1"},
+		testDeviceMetadataKey:              {"hostname": "leaf-1"},
 		"MGMT_INTERFACE|eth0|192.0.2.2/24": {"gwaddr": "192.0.2.1"},
 		testLoopbackBase:                   {testNull: testNull},
 		testLoopbackAddress:                {testNull: testNull},
@@ -290,6 +350,12 @@ func TestResetRemovesCellConfigurationAndRetainsPhysicalSettings(t *testing.T) {
 			testSpeedField:  "100000",
 		},
 		testEthernetInterface: {"ipv6_use_link_local_only": testLinkLocalEnabled},
+		testBGPGlobalsKey:     {"local_asn": "4211000042"},
+		testBGPNeighbor108Key: {testPeerType: testExternal},
+		testBGPNeighborAF108:  {testAdminStatus: testTrue},
+		testRouteMapInKey:     {testRouteOperation: testPermit},
+		testRouteMapOutKey:    {testRouteOperation: testPermit},
+		"BGP_GLOBALS_AF_NETWORK|default|ipv6_unicast|" + testBGPPrefix: {"backdoor": testFalse},
 	}
 	for key, fields := range seed {
 		values := make([]any, 0, len(fields)*2)
@@ -311,13 +377,19 @@ func TestResetRemovesCellConfigurationAndRetainsPhysicalSettings(t *testing.T) {
 		testVLANInterface,
 		testVLANAddress,
 		testVLANMember,
+		testBGPGlobalsKey,
+		testBGPNeighbor108Key,
+		testBGPNeighborAF108,
+		testRouteMapInKey,
+		testRouteMapOutKey,
+		"BGP_GLOBALS_AF_NETWORK|default|ipv6_unicast|" + testBGPPrefix,
 	} {
 		if exists, err := config.Exists(ctx, key).Result(); err != nil || exists != 0 {
 			t.Errorf("removed key %s exists = %d, err = %v", key, exists, err)
 		}
 	}
 	for _, key := range []string{
-		"DEVICE_METADATA|localhost",
+		testDeviceMetadataKey,
 		"MGMT_INTERFACE|eth0|192.0.2.2/24",
 		testLoopbackBase,
 		testEthernetInterface,
