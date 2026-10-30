@@ -30,6 +30,9 @@ USER 65532:65532
 ENTRYPOINT ["/fabric-controller-manager"]
 
 FROM debian:bookworm-slim AS fabriclet-sonic
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends iproute2 \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /
 COPY --from=fabriclet-sonic-builder /workspace/fabriclet-sonic /fabriclet-sonic
 
