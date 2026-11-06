@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/onsi/ginkgo/v2 v2.33.1
+	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
 	github.com/spf13/pflag v1.0.10
 	k8s.io/api v0.35.0
