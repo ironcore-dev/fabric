@@ -20,6 +20,9 @@ Since configuring a `Node` is heavily vendor-dependent, the
 allows a provider to implement the functionality required to
 integrate with `fabric`.
 
+For a short introduction to the Fabric resources and the SONiC switch
+lifecycle, see [SONiC switch onboarding](docs/sonic-switch-onboarding.md).
+
 ## Getting Started
 
 ### Prerequisites
