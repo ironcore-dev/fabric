@@ -4,6 +4,9 @@ Fabric models network configuration through three resources: `Node`,
 `Interface`, and `Cell`. A Fabriclet runs on each switch and connects these
 Kubernetes resources to a vendor-specific runtime such as SONiC.
 
+The switch OS must allow custom software such as the Fabriclet to run and
+provide the access required by its runtime to configure the switch.
+
 Fabric currently treats an applied Cell as an immutable configuration unit. A
 Cell is bound to a Node, applied as a whole, and deleted before a replacement
 can be applied.
@@ -123,9 +126,11 @@ spec:
       name: Ethernet4
 ```
 
-The first prefix is the advertised summary. Each peer with `dhcpRelay` is a
-south-facing port and needs one additional prefix. Peers without `dhcpRelay`
-are fabric-facing ports.
+The first prefix is the advertised summary. Each peer with `dhcpRelay` is
+configured with a VLAN and DHCP relay, intended for south-facing server
+connections, and needs one additional prefix. Peers without `dhcpRelay` are
+configured as routed BGP ports, typically for switch-to-switch links, including
+north-facing uplinks, which generally do not need DHCP relay.
 
 The Fabriclet claims the Node for this Cell, resolves the referenced
 Interfaces, applies the complete switch configuration, and marks the Cell
