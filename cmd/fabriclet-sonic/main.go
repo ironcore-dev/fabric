@@ -19,12 +19,13 @@ import (
 
 func main() {
 	var flags cli.Flags
-	var name, backend string
+	var name, backend, redisAddress string
 	var interfaces []string
 
 	flags.AddFlags(pflag.CommandLine)
 	pflag.StringVar(&name, "name", name, "Name of the node")
 	pflag.StringVar(&backend, "backend", "script", "Runtime implementation to use (script, configdb)")
+	pflag.StringVar(&redisAddress, "redis-address", "127.0.0.1:6379", "SONiC Redis address used by the configdb backend")
 	pflag.StringSliceVarP(&interfaces, "interface", "I", interfaces, "Names of the interfaces to reconcile")
 
 	pflag.Parse()
@@ -45,7 +46,7 @@ func main() {
 	case "script":
 		prov = sonic.NewScriptRuntime()
 	case "configdb":
-		prov = sonic.NewConfigDBRuntime()
+		prov = sonic.NewConfigDBRuntime(redisAddress)
 	default:
 		err = fmt.Errorf("unknown backend %q", backend)
 	}
