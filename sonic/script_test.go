@@ -4,6 +4,7 @@
 package sonic
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/ironcore-dev/fabric/cellruntime"
@@ -159,6 +161,120 @@ func TestRenderCellInvalid(t *testing.T) {
 			mutate(cfg)
 			if _, err := rt.renderCell(cfg); !errors.Is(err, cellruntime.TerminalError(nil)) {
 				t.Errorf("expected terminal error, got %v", err)
+			}
+		})
+	}
+}
+
+// backdateFlag creates the done-flag file with its mtime flagAge in the past.
+func backdateFlag(t *testing.T, path string, flagAge time.Duration) {
+	t.Helper()
+	if err := os.WriteFile(path, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mtime := time.Now().Add(-flagAge)
+	if err := os.Chtimes(path, mtime, mtime); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCellStatus(t *testing.T) {
+	ctx := context.Background()
+	const node = "swi1"
+	const vlan1, vlan2 = "Vlan1001", "Vlan1002"
+
+	for _, tc := range []struct {
+		name        string
+		flagAge     time.Duration // 0 = no flag
+		bootAge     time.Duration
+		configured  int
+		established int
+		stateVLANs  []string
+		vlanUp      map[string]bool
+		wantPhase   cellruntime.CellPhase
+		wantErr     bool
+	}{
+		{
+			name:    "no done flag",
+			wantErr: true,
+		},
+		{
+			name:      "flag present, not yet rebooted",
+			flagAge:   5 * time.Minute, // flag written 5m ago (after boot)
+			bootAge:   1 * time.Hour,   // device booted 1h ago → flag newer than boot
+			wantPhase: cellruntime.CellPhaseCreated,
+		},
+		{
+			name:        "rebooted, BGP not established",
+			flagAge:     2 * time.Hour,
+			bootAge:     1 * time.Hour,
+			configured:  2,
+			established: 1,
+			wantPhase:   cellruntime.CellPhaseCreated,
+		},
+		{
+			name:        "rebooted, BGP up, no VLANs in state file",
+			flagAge:     2 * time.Hour,
+			bootAge:     1 * time.Hour,
+			configured:  2,
+			established: 2,
+			wantPhase:   cellruntime.CellPhaseActive,
+		},
+		{
+			name:        "rebooted, BGP up, VLAN down",
+			flagAge:     2 * time.Hour,
+			bootAge:     1 * time.Hour,
+			configured:  2,
+			established: 2,
+			stateVLANs:  []string{vlan1},
+			vlanUp:      map[string]bool{vlan1: false},
+			wantPhase:   cellruntime.CellPhaseCreated,
+		},
+		{
+			name:        "all checks pass",
+			flagAge:     2 * time.Hour,
+			bootAge:     1 * time.Hour,
+			configured:  2,
+			established: 2,
+			stateVLANs:  []string{vlan1, vlan2},
+			vlanUp:      map[string]bool{vlan1: true, vlan2: true},
+			wantPhase:   cellruntime.CellPhaseActive,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			r := &ScriptRuntime{
+				doneFlagPath:  filepath.Join(dir, "fabric-cell.done"),
+				stateFilePath: filepath.Join(dir, "fabric-cell.state"),
+				uptime:        func() (time.Duration, error) { return tc.bootAge, nil },
+				bgpEstablished: func(context.Context) (int, int, error) {
+					return tc.configured, tc.established, nil
+				},
+				ifaceUp: func(name string) (bool, error) { return tc.vlanUp[name], nil },
+			}
+			if tc.flagAge > 0 {
+				backdateFlag(t, r.doneFlagPath, tc.flagAge)
+			}
+			if len(tc.stateVLANs) > 0 {
+				if err := os.WriteFile(r.stateFilePath, []byte(strings.Join(tc.stateVLANs, "\n")), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			status, err := r.CellStatus(ctx, node)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got status %v", status)
+				}
+				if !errors.Is(err, cellruntime.ErrNotFound) {
+					t.Errorf("expected ErrNotFound, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if status.Phase != tc.wantPhase {
+				t.Errorf("phase = %q, want %q", status.Phase, tc.wantPhase)
 			}
 		})
 	}

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/ironcore-dev/fabric/cellruntime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -23,6 +25,7 @@ import (
 const (
 	ProviderName = "sonic"
 	doneFlagFile = "/etc/sonic/fabric-cell.done"
+	stateFile    = "/etc/sonic/fabric-cell.state"
 	scriptDir    = "/etc/sonic"
 )
 
@@ -39,12 +42,26 @@ const (
 //go:embed templates
 var templates embed.FS
 
-type ScriptRuntime struct{}
+type ScriptRuntime struct {
+	// probe functions; swapped by tests
+	uptime         func() (time.Duration, error)
+	bgpEstablished func(ctx context.Context) (configured, established int, err error)
+	ifaceUp        func(name string) (bool, error)
+	// path overrides for tests
+	doneFlagPath  string
+	stateFilePath string
+}
 
 var _ cellruntime.Runtime = (*ScriptRuntime)(nil)
 
 func NewScriptRuntime() *ScriptRuntime {
-	return &ScriptRuntime{}
+	r := &ScriptRuntime{}
+	r.uptime = readUptime
+	r.bgpEstablished = bgpEstablishedFromVtysh
+	r.ifaceUp = ifaceUpFromSysfs
+	r.doneFlagPath = doneFlagFile
+	r.stateFilePath = stateFile
+	return r
 }
 
 func (r *ScriptRuntime) ProviderName() string {
@@ -60,18 +77,38 @@ func (r *ScriptRuntime) ApplyCell(ctx context.Context, node string, cfg *cellrun
 	if err != nil {
 		return err
 	}
-	return runScript(ctx, script)
+	if err := runScript(ctx, script); err != nil {
+		return err
+	}
+	// Collect VLANs from the rendered south ports so CellStatus can check them
+	// without re-deriving them from the API.
+	var vlans []string
+	for _, peer := range cfg.Peers {
+		if peer.DHCPRelay == "" || peer.Interface == nil {
+			continue
+		}
+		portNum, err := strconv.Atoi(strings.TrimPrefix(peer.Interface.ID, "Ethernet"))
+		if err != nil {
+			continue
+		}
+		vlans = append(vlans, fmt.Sprintf("Vlan%d", portNum/4+1001))
+	}
+	return os.WriteFile(r.stateFilePath, []byte(strings.Join(vlans, "\n")), 0o644)
 }
 
 func (r *ScriptRuntime) DeleteCell(ctx context.Context, node string) error {
-	if !fileExists(doneFlagFile) {
+	if !fileExists(r.doneFlagPath) {
 		return fmt.Errorf("cell %s %w", node, cellruntime.ErrNotFound)
 	}
 	script, err := r.renderReset(node)
 	if err != nil {
 		return err
 	}
-	return runScript(ctx, script)
+	if err := runScript(ctx, script); err != nil {
+		return err
+	}
+	_ = os.Remove(r.stateFilePath)
+	return nil
 }
 
 type southPort struct {
@@ -187,9 +224,46 @@ func (r *ScriptRuntime) renderReset(node string) ([]byte, error) {
 }
 
 func (r *ScriptRuntime) CellStatus(ctx context.Context, node string) (*cellruntime.CellStatus, error) {
-	if !fileExists(doneFlagFile) {
+	if !fileExists(r.doneFlagPath) {
 		return nil, fmt.Errorf("cell %s %w", node, cellruntime.ErrNotFound)
 	}
+
+	// Check if device has rebooted since the done flag was written.
+	flagInfo, err := os.Stat(r.doneFlagPath)
+	if err != nil {
+		return nil, fmt.Errorf("stat done flag: %w", err)
+	}
+	uptime, err := r.uptime()
+	if err != nil {
+		return nil, fmt.Errorf("reading uptime: %w", err)
+	}
+	bootTime := time.Now().Add(-uptime)
+	if flagInfo.ModTime().After(bootTime) {
+		// Flag is newer than boot — device hasn't rebooted yet after provisioning.
+		return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+	}
+
+	// Check BGP sessions.
+	configured, established, err := r.bgpEstablished(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("checking BGP: %w", err)
+	}
+	if configured > 0 && established < configured {
+		return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+	}
+
+	// Check VLAN interfaces from the state file.
+	vlans, err := readStateFile(r.stateFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("reading state file: %w", err)
+	}
+	for _, vlan := range vlans {
+		up, err := r.ifaceUp(vlan)
+		if err != nil || !up {
+			return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+		}
+	}
+
 	return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseActive}, nil
 }
 
@@ -230,6 +304,67 @@ func render(name string, data any) ([]byte, error) {
 		return nil, cellruntime.TerminalError(fmt.Errorf("rendering cell template: %w", err))
 	}
 	return buf.Bytes(), nil
+}
+
+func readUptime() (time.Duration, error) {
+	data, err := os.ReadFile("/proc/uptime")
+	if err != nil {
+		return 0, err
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) == 0 {
+		return 0, fmt.Errorf("unexpected /proc/uptime format")
+	}
+	secs, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return 0, fmt.Errorf("parsing /proc/uptime: %w", err)
+	}
+	return time.Duration(secs * float64(time.Second)), nil
+}
+
+func bgpEstablishedFromVtysh(ctx context.Context) (configured, established int, error error) {
+	out, err := exec.CommandContext(ctx, "vtysh", "-c", "show bgp neighbors json").Output()
+	if err != nil {
+		return 0, 0, fmt.Errorf("vtysh: %w", err)
+	}
+	var neighbors map[string]struct {
+		BGPState string `json:"bgpState"`
+	}
+	if err := json.Unmarshal(out, &neighbors); err != nil {
+		return 0, 0, fmt.Errorf("parsing BGP JSON: %w", err)
+	}
+	for _, n := range neighbors {
+		configured++
+		if n.BGPState == "Established" {
+			established++
+		}
+	}
+	return configured, established, nil
+}
+
+func ifaceUpFromSysfs(name string) (bool, error) {
+	data, err := os.ReadFile(filepath.Join("/sys/class/net", name, "operstate"))
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(data)) == "up", nil
+}
+
+func readStateFile(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var vlans []string
+	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+		if line != "" {
+			vlans = append(vlans, line)
+		}
+	}
+	return vlans, nil
 }
 
 func runScript(ctx context.Context, script []byte) error {
