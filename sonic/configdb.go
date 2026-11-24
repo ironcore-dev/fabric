@@ -6,7 +6,9 @@ package sonic
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/ironcore-dev/fabric/cellruntime"
 	sonicconfigdb "github.com/ironcore-dev/fabric/sonic/configdb"
@@ -24,6 +26,14 @@ type hostOperations interface {
 type ConfigDBRuntime struct {
 	db   sonicconfigdb.DB
 	host hostOperations
+	// probe functions; swapped by tests
+	readBootID     func() (string, error)
+	bgpEstablished func(ctx context.Context) (configured, established int, err error)
+	ifaceUp        func(name string) (bool, error)
+	// path overrides for tests
+	doneFlagPath  string
+	stateFilePath string
+	bootIDPath    string
 }
 
 var _ cellruntime.Runtime = (*ConfigDBRuntime)(nil)
@@ -33,7 +43,14 @@ func NewConfigDBRuntime(redisAddress string) *ConfigDBRuntime {
 }
 
 func newConfigDBRuntime(db sonicconfigdb.DB, host hostOperations) *ConfigDBRuntime {
-	return &ConfigDBRuntime{db: db, host: host}
+	r := &ConfigDBRuntime{db: db, host: host}
+	r.readBootID = readBootID
+	r.bgpEstablished = bgpEstablishedFromVtysh
+	r.ifaceUp = ifaceUpFromSysfs
+	r.doneFlagPath = doneFlagFile
+	r.stateFilePath = stateFile
+	r.bootIDPath = bootIDFile
+	return r
 }
 
 func (r *ConfigDBRuntime) ProviderName() string {
@@ -98,6 +115,23 @@ func (r *ConfigDBRuntime) ApplyCell(ctx context.Context, _ string, cfg *cellrunt
 	if err := r.host.SaveConfig(ctx); err != nil {
 		return fmt.Errorf("saving SONiC configuration: %w", err)
 	}
+	// Persist VLANs so CellStatus can check them after reboot without
+	// re-deriving from the API. Written before Reboot so the file is present
+	// if the process is killed by the reboot before returning.
+	var vlans []string
+	for _, port := range desired.SouthPorts {
+		vlans = append(vlans, "Vlan"+strconv.Itoa(port.VLAN))
+	}
+	if err := os.WriteFile(r.stateFilePath, []byte(strings.Join(vlans, "\n")), 0o644); err != nil {
+		return fmt.Errorf("writing state file: %w", err)
+	}
+	bootID, err := r.readBootID()
+	if err != nil {
+		return fmt.Errorf("reading boot ID: %w", err)
+	}
+	if err := os.WriteFile(r.bootIDPath, []byte(bootID), 0o644); err != nil {
+		return fmt.Errorf("writing boot ID file: %w", err)
+	}
 	if err := r.host.MarkCellApplied(ctx); err != nil {
 		return fmt.Errorf("marking cell applied: %w", err)
 	}
@@ -125,6 +159,8 @@ func (r *ConfigDBRuntime) DeleteCell(ctx context.Context, node string) error {
 	if err := r.host.ClearCellApplied(ctx); err != nil {
 		return fmt.Errorf("clearing cell marker: %w", err)
 	}
+	_ = os.Remove(r.stateFilePath)
+	_ = os.Remove(r.bootIDPath)
 	if err := r.host.Reboot(ctx); err != nil {
 		return fmt.Errorf("rebooting switch: %w", err)
 	}
@@ -139,6 +175,52 @@ func (r *ConfigDBRuntime) CellStatus(ctx context.Context, node string) (*cellrun
 	if !applied {
 		return nil, fmt.Errorf("cell %s %w", node, cellruntime.ErrNotFound)
 	}
+
+	// Check if device has rebooted since provisioning by comparing the stored
+	// boot ID (written at ApplyCell time) against the current boot ID.
+	storedBootID, err := os.ReadFile(r.bootIDPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No boot-ID baseline recorded yet: the reboot after provisioning
+			// has not been confirmed, so the cell is still being created. Do not
+			// write a baseline here — that must only happen in ApplyCell.
+			return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+		}
+		return nil, fmt.Errorf("reading stored boot ID: %w", err)
+	}
+	currentBootID, err := r.readBootID()
+	if err != nil {
+		return nil, fmt.Errorf("reading current boot ID: %w", err)
+	}
+	if strings.TrimSpace(string(storedBootID)) == currentBootID {
+		// Same boot — device hasn't rebooted yet after provisioning.
+		return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+	}
+
+	// Check BGP sessions: use the same counting approach as the script backend.
+	// If vtysh reports at least one configured neighbor but not all are
+	// Established, the switch is not ready yet. Zero configured neighbors
+	// (e.g. first switch provisioned before any peers exist) passes through.
+	configured, established, err := r.bgpEstablished(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("checking BGP: %w", err)
+	}
+	if configured > 0 && established < configured {
+		return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+	}
+
+	// Check VLAN interfaces from the state file.
+	vlans, err := readStateFile(r.stateFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("reading state file: %w", err)
+	}
+	for _, vlan := range vlans {
+		up, err := r.ifaceUp(vlan)
+		if err != nil || !up {
+			return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+		}
+	}
+
 	return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseActive}, nil
 }
 

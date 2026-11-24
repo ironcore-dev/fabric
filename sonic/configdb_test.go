@@ -6,6 +6,8 @@ package sonic
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -75,6 +77,7 @@ type configDBRuntimeFixture struct {
 	server  *miniredis.Miniredis
 	config  *redis.Client
 	appl    *redis.Client
+	dir     string
 }
 
 func newConfigDBRuntimeFixture(t *testing.T) *configDBRuntimeFixture {
@@ -89,12 +92,21 @@ func newConfigDBRuntimeFixture(t *testing.T) *configDBRuntimeFixture {
 		_ = config.Close()
 		_ = appl.Close()
 	})
+	dir := t.TempDir()
+	r := newConfigDBRuntime(db, host)
+	r.doneFlagPath = filepath.Join(dir, "fabric-cell.done")
+	r.stateFilePath = filepath.Join(dir, "fabric-cell.state")
+	r.bootIDPath = filepath.Join(dir, "fabric-cell.bootid")
+	r.readBootID = func() (string, error) { return "test-boot-id", nil }
+	r.bgpEstablished = func(context.Context) (int, int, error) { return 0, 0, nil }
+	r.ifaceUp = func(string) (bool, error) { return true, nil }
 	return &configDBRuntimeFixture{
-		runtime: newConfigDBRuntime(db, host),
+		runtime: r,
 		host:    host,
 		server:  server,
 		config:  config,
 		appl:    appl,
+		dir:     dir,
 	}
 }
 
@@ -145,6 +157,14 @@ func TestConfigDBRuntimeApplyLeaf(t *testing.T) {
 	}
 	if !fixture.host.applied {
 		t.Error("cell marker was not written")
+	}
+	// State file must be written before reboot so CellStatus can check VLANs.
+	stateData, err := os.ReadFile(fixture.runtime.stateFilePath)
+	if err != nil {
+		t.Fatalf("reading state file: %v", err)
+	}
+	if got, want := strings.TrimSpace(string(stateData)), "Vlan1001\nVlan1002"; got != want {
+		t.Errorf("state file = %q, want %q", got, want)
 	}
 }
 
@@ -338,7 +358,16 @@ func TestConfigDBRuntimeStatusAndIdentity(t *testing.T) {
 	if _, err := fixture.runtime.CellStatus(ctx, "leaf-42"); !errors.Is(err, cellruntime.ErrNotFound) {
 		t.Errorf("CellStatus absent error = %v, want ErrNotFound", err)
 	}
+	// Simulate post-reboot state: boot ID file contains the provisioning boot ID,
+	// but current readBootID returns a different ID → device has rebooted.
+	if err := os.WriteFile(fixture.runtime.bootIDPath, []byte("old-boot-id"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fixture.runtime.readBootID = func() (string, error) { return "new-boot-id", nil }
 	fixture.host.applied = true
+	if err := os.WriteFile(fixture.runtime.stateFilePath, []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	status, err := fixture.runtime.CellStatus(ctx, "leaf-42")
 	if err != nil {
 		t.Fatalf("CellStatus active: %v", err)
@@ -375,5 +404,128 @@ func TestHostCommandEntersHostUTSNamespace(t *testing.T) {
 	want := "nsenter --target 1 --mount --net --pid --uts -- hostname"
 	if got := strings.Join(cmd.Args, " "); got != want {
 		t.Errorf("host command = %q, want %q", got, want)
+	}
+}
+
+func TestConfigDBRuntimeCellStatus(t *testing.T) {
+	ctx := context.Background()
+	const vlan1, vlan2 = "Vlan1001", "Vlan1002"
+
+	for _, tc := range []struct {
+		name           string
+		applied        bool
+		noBootIDFile   bool // applied, but no boot-ID baseline recorded yet
+		rebooted       bool // true = current boot ID differs from stored (post-reboot)
+		bgpConfigured  int
+		bgpEstablished int
+		stateVLANs     []string
+		vlanUp         map[string]bool
+		wantPhase      cellruntime.CellPhase
+		wantErr        bool
+	}{
+		{
+			name:    "no cell marker",
+			wantErr: true,
+		},
+		{
+			name:         "applied but no boot-ID baseline",
+			applied:      true,
+			noBootIDFile: true,
+			wantPhase:    cellruntime.CellPhaseCreated,
+		},
+		{
+			name:      "flag present, not yet rebooted",
+			applied:   true,
+			rebooted:  false,
+			wantPhase: cellruntime.CellPhaseCreated,
+		},
+		{
+			name:           "rebooted, one BGP neighbor not established",
+			applied:        true,
+			rebooted:       true,
+			bgpConfigured:  2,
+			bgpEstablished: 1,
+			wantPhase:      cellruntime.CellPhaseCreated,
+		},
+		{
+			name:           "rebooted, no BGP neighbors established",
+			applied:        true,
+			rebooted:       true,
+			bgpConfigured:  2,
+			bgpEstablished: 0,
+			wantPhase:      cellruntime.CellPhaseCreated,
+		},
+		{
+			name:           "rebooted, zero configured BGP neighbors (first switch, no peers yet)",
+			applied:        true,
+			rebooted:       true,
+			bgpConfigured:  0,
+			bgpEstablished: 0,
+			stateVLANs:     []string{vlan1, vlan2},
+			vlanUp:         map[string]bool{vlan1: true, vlan2: true},
+			wantPhase:      cellruntime.CellPhaseActive,
+		},
+		{
+			name:           "rebooted, BGP up, VLAN down",
+			applied:        true,
+			rebooted:       true,
+			bgpConfigured:  2,
+			bgpEstablished: 2,
+			stateVLANs:     []string{vlan1},
+			vlanUp:         map[string]bool{vlan1: false},
+			wantPhase:      cellruntime.CellPhaseCreated,
+		},
+		{
+			name:           "all checks pass",
+			applied:        true,
+			rebooted:       true,
+			bgpConfigured:  2,
+			bgpEstablished: 2,
+			stateVLANs:     []string{vlan1, vlan2},
+			vlanUp:         map[string]bool{vlan1: true, vlan2: true},
+			wantPhase:      cellruntime.CellPhaseActive,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := newConfigDBRuntimeFixture(t)
+			fixture.host.applied = tc.applied
+			// Write a stored boot ID; set current to match or differ based on tc.rebooted.
+			if tc.applied && !tc.noBootIDFile {
+				if err := os.WriteFile(fixture.runtime.bootIDPath, []byte("provisioning-boot-id"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if tc.rebooted {
+					fixture.runtime.readBootID = func() (string, error) { return "new-boot-id", nil }
+				} else {
+					fixture.runtime.readBootID = func() (string, error) { return "provisioning-boot-id", nil }
+				}
+			}
+			fixture.runtime.bgpEstablished = func(context.Context) (int, int, error) {
+				return tc.bgpConfigured, tc.bgpEstablished, nil
+			}
+			fixture.runtime.ifaceUp = func(name string) (bool, error) { return tc.vlanUp[name], nil }
+			if len(tc.stateVLANs) > 0 {
+				content := []byte(strings.Join(tc.stateVLANs, "\n"))
+				if err := os.WriteFile(fixture.runtime.stateFilePath, content, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			status, err := fixture.runtime.CellStatus(ctx, "leaf-42")
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got status %v", status)
+				}
+				if !errors.Is(err, cellruntime.ErrNotFound) {
+					t.Errorf("expected ErrNotFound, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if status.Phase != tc.wantPhase {
+				t.Errorf("phase = %q, want %q", status.Phase, tc.wantPhase)
+			}
+		})
 	}
 }
