@@ -26,6 +26,7 @@ const (
 	ProviderName = "sonic"
 	doneFlagFile = "/etc/sonic/fabric-cell.done"
 	stateFile    = "/etc/sonic/fabric-cell.state"
+	bootIDFile   = "/etc/sonic/fabric-cell.bootid"
 	scriptDir    = "/etc/sonic"
 )
 
@@ -323,7 +324,8 @@ func readUptime() (time.Duration, error) {
 }
 
 func bgpEstablishedFromVtysh(ctx context.Context) (configured, established int, error error) {
-	out, err := exec.CommandContext(ctx, "vtysh", "-c", "show bgp neighbors json").Output()
+	// vtysh runs in the host namespace (see hostCommand); invoke via nsenter.
+	out, err := hostCommand(ctx, "vtysh", "-c", "show bgp neighbors json").Output()
 	if err != nil {
 		return 0, 0, fmt.Errorf("vtysh: %w", err)
 	}
@@ -340,6 +342,16 @@ func bgpEstablishedFromVtysh(ctx context.Context) (configured, established int, 
 		}
 	}
 	return configured, established, nil
+}
+
+// readBootID returns the current kernel boot ID, used to detect whether the
+// device has rebooted since provisioning.
+func readBootID() (string, error) {
+	data, err := os.ReadFile("/proc/sys/kernel/random/boot_id")
+	if err != nil {
+		return "", fmt.Errorf("reading boot_id: %w", err)
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 func ifaceUpFromSysfs(name string) (bool, error) {
