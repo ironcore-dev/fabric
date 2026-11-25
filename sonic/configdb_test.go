@@ -96,9 +96,10 @@ func newConfigDBRuntimeFixture(t *testing.T) *configDBRuntimeFixture {
 	r := newConfigDBRuntime(db, host)
 	r.doneFlagPath = filepath.Join(dir, "fabric-cell.done")
 	r.stateFilePath = filepath.Join(dir, "fabric-cell.state")
+	r.bgpStatePath = filepath.Join(dir, "fabric-cell.bgp")
 	r.bootIDPath = filepath.Join(dir, "fabric-cell.bootid")
 	r.readBootID = func() (string, error) { return "test-boot-id", nil }
-	r.bgpEstablished = func(context.Context) (int, int, error) { return 0, 0, nil }
+	r.bgpEstablished = func(context.Context) (map[string]bool, error) { return map[string]bool{}, nil }
 	r.ifaceUp = func(string) (bool, error) { return true, nil }
 	return &configDBRuntimeFixture{
 		runtime: r,
@@ -165,6 +166,15 @@ func TestConfigDBRuntimeApplyLeaf(t *testing.T) {
 	}
 	if got, want := strings.TrimSpace(string(stateData)), "Vlan1001\nVlan1002"; got != want {
 		t.Errorf("state file = %q, want %q", got, want)
+	}
+	// Expected BGP neighbors must be persisted before reboot so CellStatus can
+	// require every one of them to be Established before reporting Active.
+	bgpData, err := os.ReadFile(fixture.runtime.bgpStatePath)
+	if err != nil {
+		t.Fatalf("reading BGP state file: %v", err)
+	}
+	if got, want := strings.TrimSpace(string(bgpData)), testFabricPort+"\n"+testFabricPort2; got != want {
+		t.Errorf("BGP state file = %q, want %q", got, want)
 	}
 }
 
@@ -368,6 +378,11 @@ func TestConfigDBRuntimeStatusAndIdentity(t *testing.T) {
 	if err := os.WriteFile(fixture.runtime.stateFilePath, []byte{}, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// Empty BGP baseline: no expected neighbors to wait for, so BGP readiness
+	// passes vacuously and the cell can reach Active.
+	if err := os.WriteFile(fixture.runtime.bgpStatePath, []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	status, err := fixture.runtime.CellStatus(ctx, "leaf-42")
 	if err != nil {
 		t.Fatalf("CellStatus active: %v", err)
@@ -410,18 +425,20 @@ func TestHostCommandEntersHostUTSNamespace(t *testing.T) {
 func TestConfigDBRuntimeCellStatus(t *testing.T) {
 	ctx := context.Background()
 	const vlan1, vlan2 = "Vlan1001", "Vlan1002"
+	const nbr1, nbr2 = testFabricPort, testFabricPort2
 
 	for _, tc := range []struct {
-		name           string
-		applied        bool
-		noBootIDFile   bool // applied, but no boot-ID baseline recorded yet
-		rebooted       bool // true = current boot ID differs from stored (post-reboot)
-		bgpConfigured  int
-		bgpEstablished int
-		stateVLANs     []string
-		vlanUp         map[string]bool
-		wantPhase      cellruntime.CellPhase
-		wantErr        bool
+		name         string
+		applied      bool
+		noBootIDFile bool // applied, but no boot-ID baseline recorded yet
+		noBGPFile    bool // applied/rebooted, but no BGP baseline recorded yet
+		rebooted     bool // true = current boot ID differs from stored (post-reboot)
+		bgpExpected  []string
+		bgpUp        map[string]bool
+		stateVLANs   []string
+		vlanUp       map[string]bool
+		wantPhase    cellruntime.CellPhase
+		wantErr      bool
 	}{
 		{
 			name:    "no cell marker",
@@ -440,50 +457,57 @@ func TestConfigDBRuntimeCellStatus(t *testing.T) {
 			wantPhase: cellruntime.CellPhaseCreated,
 		},
 		{
-			name:           "rebooted, one BGP neighbor not established",
-			applied:        true,
-			rebooted:       true,
-			bgpConfigured:  2,
-			bgpEstablished: 1,
-			wantPhase:      cellruntime.CellPhaseCreated,
+			name:      "rebooted, no BGP baseline file yet",
+			applied:   true,
+			rebooted:  true,
+			noBGPFile: true,
+			wantPhase: cellruntime.CellPhaseCreated,
 		},
 		{
-			name:           "rebooted, no BGP neighbors established",
-			applied:        true,
-			rebooted:       true,
-			bgpConfigured:  2,
-			bgpEstablished: 0,
-			wantPhase:      cellruntime.CellPhaseCreated,
+			name:        "rebooted, one expected neighbor not established",
+			applied:     true,
+			rebooted:    true,
+			bgpExpected: []string{nbr1, nbr2},
+			bgpUp:       map[string]bool{nbr1: true},
+			wantPhase:   cellruntime.CellPhaseCreated,
 		},
 		{
-			name:           "rebooted, zero configured BGP neighbors (first switch, no peers yet)",
-			applied:        true,
-			rebooted:       true,
-			bgpConfigured:  0,
-			bgpEstablished: 0,
-			stateVLANs:     []string{vlan1, vlan2},
-			vlanUp:         map[string]bool{vlan1: true, vlan2: true},
-			wantPhase:      cellruntime.CellPhaseActive,
+			name:        "rebooted, expected neighbors but vtysh reports none (reconverging)",
+			applied:     true,
+			rebooted:    true,
+			bgpExpected: []string{nbr1, nbr2},
+			bgpUp:       map[string]bool{},
+			wantPhase:   cellruntime.CellPhaseCreated,
 		},
 		{
-			name:           "rebooted, BGP up, VLAN down",
-			applied:        true,
-			rebooted:       true,
-			bgpConfigured:  2,
-			bgpEstablished: 2,
-			stateVLANs:     []string{vlan1},
-			vlanUp:         map[string]bool{vlan1: false},
-			wantPhase:      cellruntime.CellPhaseCreated,
+			name:        "rebooted, no expected neighbors (spine/first switch, no peers)",
+			applied:     true,
+			rebooted:    true,
+			bgpExpected: nil,
+			bgpUp:       map[string]bool{},
+			stateVLANs:  []string{vlan1, vlan2},
+			vlanUp:      map[string]bool{vlan1: true, vlan2: true},
+			wantPhase:   cellruntime.CellPhaseActive,
 		},
 		{
-			name:           "all checks pass",
-			applied:        true,
-			rebooted:       true,
-			bgpConfigured:  2,
-			bgpEstablished: 2,
-			stateVLANs:     []string{vlan1, vlan2},
-			vlanUp:         map[string]bool{vlan1: true, vlan2: true},
-			wantPhase:      cellruntime.CellPhaseActive,
+			name:        "rebooted, BGP up, VLAN down",
+			applied:     true,
+			rebooted:    true,
+			bgpExpected: []string{nbr1, nbr2},
+			bgpUp:       map[string]bool{nbr1: true, nbr2: true},
+			stateVLANs:  []string{vlan1},
+			vlanUp:      map[string]bool{vlan1: false},
+			wantPhase:   cellruntime.CellPhaseCreated,
+		},
+		{
+			name:        "all checks pass",
+			applied:     true,
+			rebooted:    true,
+			bgpExpected: []string{nbr1, nbr2},
+			bgpUp:       map[string]bool{nbr1: true, nbr2: true},
+			stateVLANs:  []string{vlan1, vlan2},
+			vlanUp:      map[string]bool{vlan1: true, vlan2: true},
+			wantPhase:   cellruntime.CellPhaseActive,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -500,8 +524,15 @@ func TestConfigDBRuntimeCellStatus(t *testing.T) {
 					fixture.runtime.readBootID = func() (string, error) { return "provisioning-boot-id", nil }
 				}
 			}
-			fixture.runtime.bgpEstablished = func(context.Context) (int, int, error) {
-				return tc.bgpConfigured, tc.bgpEstablished, nil
+			// Write the BGP baseline unless the case exercises its absence.
+			if tc.applied && !tc.noBGPFile {
+				content := []byte(strings.Join(tc.bgpExpected, "\n"))
+				if err := os.WriteFile(fixture.runtime.bgpStatePath, content, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			fixture.runtime.bgpEstablished = func(context.Context) (map[string]bool, error) {
+				return tc.bgpUp, nil
 			}
 			fixture.runtime.ifaceUp = func(name string) (bool, error) { return tc.vlanUp[name], nil }
 			if len(tc.stateVLANs) > 0 {

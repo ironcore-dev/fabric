@@ -151,6 +151,9 @@ func (r *CellReconciler) patchClaimNode(ctx context.Context, node *v1alpha1.Node
 }
 
 func (r *CellReconciler) applyCellPhase(ctx context.Context, cell *v1alpha1.Cell, phase v1alpha1.CellPhase) error {
+	if phase == "" {
+		return nil
+	}
 	if phase == cell.Status.Phase {
 		return nil
 	}
@@ -272,13 +275,23 @@ func (r *CellReconciler) reconcile(
 	)
 	switch status.Phase {
 	case cellruntime.CellPhaseCreated:
-		cellPhase = v1alpha1.CellPending
+		// TODO: Simplify the nested Switch with better phase computation.
+		switch cell.Status.Phase {
+		case v1alpha1.CellActive, v1alpha1.CellDegraded:
+			cellPhase = v1alpha1.CellDegraded
+		default:
+			cellPhase = v1alpha1.CellPending
+		}
 		requeueAfter = r.CellRuntimePollImmediateInterval
 	case cellruntime.CellPhaseActive:
 		cellPhase = v1alpha1.CellActive
 		requeueAfter = r.CellRuntimePollInterval
 	case cellruntime.CellPhaseError:
 		cellPhase = v1alpha1.CellFailed
+		requeueAfter = r.CellRuntimePollInterval
+	default:
+		log.Info("Unknown cell runtime phase, keeping current phase", "runtimePhase", status.Phase)
+		cellPhase = cell.Status.Phase
 		requeueAfter = r.CellRuntimePollInterval
 	}
 

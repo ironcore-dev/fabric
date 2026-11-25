@@ -59,11 +59,12 @@ type InterfaceStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,shortName=iface
 // +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.spec.nodeRef.name`
 // +kubebuilder:printcolumn:name="Handle",type=string,JSONPath=`.spec.handle`
 // +kubebuilder:printcolumn:name="Admin",type=string,JSONPath=`.spec.adminState`
 // +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.operationState`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // Interface is the Schema for the interfaces API
 type Interface struct {

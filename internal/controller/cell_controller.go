@@ -37,6 +37,14 @@ func (r *CellReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
+	if cell.Status.Phase == "" {
+		base := cell.DeepCopy()
+		cell.Status.Phase = fabricv1alpha1.CellPending
+		if err := r.Status().Patch(ctx, cell, client.MergeFrom(base)); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	node := &fabricv1alpha1.Node{}
 	if err := r.Get(ctx, client.ObjectKey{Name: cell.Spec.NodeRef.Name}, node); err != nil {
 		if apierrors.IsNotFound(err) {

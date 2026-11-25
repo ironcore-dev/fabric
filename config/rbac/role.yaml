@@ -7,8 +7,12 @@ rules:
 - apiGroups:
   - fabric.ironcore.dev
   resources:
+  - cellconfiginstances
+  - cellconfigrollouts
   - cells
   verbs:
+  - create
+  - delete
   - get
   - list
   - patch
@@ -17,18 +21,35 @@ rules:
 - apiGroups:
   - fabric.ironcore.dev
   resources:
-  - cells/finalizers
+  - cellconfiginstances/finalizers
+  - cellconfigrollouts/finalizers
   verbs:
-  - patch
   - update
 - apiGroups:
   - fabric.ironcore.dev
   resources:
+  - cellconfiginstances/status
+  - cellconfigrollouts/status
   - cells/status
   - interfaces/status
   - nodes/status
   verbs:
   - get
+  - patch
+  - update
+- apiGroups:
+  - fabric.ironcore.dev
+  resources:
+  - cellconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - fabric.ironcore.dev
+  resources:
+  - cells/finalizers
+  verbs:
   - patch
   - update
 - apiGroups:

@@ -12,13 +12,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	. "sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 )
 
 const defaultNamespace = "default"
+const testCellHostname = "host.example.org"
+const testDHCPRelay = "dhcp.example.org"
 
 var _ = Describe("CellController", func() {
 	var (
@@ -61,7 +62,7 @@ var _ = Describe("CellController", func() {
 				NodeRef: v1alpha1.LocalObjectReference{
 					Name: node.Name,
 				},
-				Hostname: "host.example.org",
+				Hostname: testCellHostname,
 				IPs: []string{
 					"ffee:ffee::1",
 				},
@@ -71,66 +72,66 @@ var _ = Describe("CellController", func() {
 				Peers: []v1alpha1.Peer{
 					{
 						InterfaceRef: v1alpha1.LocalObjectReference{Name: iface.Name},
-						DHCPRelay:    "dhcp.example.org",
+						DHCPRelay:    testDHCPRelay,
 					},
 				},
 			},
 		}
 		Expect(k8sClient.Create(ctx, cell)).To(Succeed())
-		cellKey := client.ObjectKeyFromObject(cell)
 
 		DeferCleanup(func(ctx context.Context) error {
 			return client.IgnoreNotFound(k8sClient.Delete(ctx, cell))
 		})
 
 		By("waiting for the Fabriclet to bind and apply the cell")
-		Eventually(func(g Gomega) {
-			g.Expect(k8sClient.Get(ctx, cellKey, cell)).To(Succeed())
-			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(node), node)).To(Succeed())
-			g.Expect(node.Spec.CellRef).To(Equal(&v1alpha1.NamespacedUIDReference{
+		Eventually(Object(cell)).Should(SatisfyAll(
+			HaveField("Status.Phase", Equal(v1alpha1.CellPending)),
+			HaveField("Status.Conditions", ContainElement(SatisfyAll(
+				HaveField("Type", v1alpha1.CellConditionTypeBound),
+				HaveField("Status", metav1.ConditionTrue),
+				HaveField("Reason", "Bound"),
+			))),
+			HaveField("Finalizers", ContainElement(NodeFinalizer(node.Name))),
+		))
+		Eventually(Object(node)).Should(
+			HaveField("Spec.CellRef", Equal(&v1alpha1.NamespacedUIDReference{
 				Namespace: cell.Namespace,
 				Name:      cell.Name,
 				UID:       cell.UID,
-			}))
-			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellPending))
-			g.Expect(meta.FindStatusCondition(cell.Status.Conditions, v1alpha1.CellConditionTypeBound)).To(And(
-				HaveField("Status", metav1.ConditionTrue),
-				HaveField("Reason", "Bound"),
-			))
-			g.Expect(controllerutil.ContainsFinalizer(cell, NodeFinalizer(node.Name))).To(BeTrue())
+			})),
+		)
 
+		desiredCfg := &cellruntime.CellConfig{
+			Metadata: cellruntime.CellMetadata{
+				Namespace: cell.Namespace,
+				Name:      cell.Name,
+				UID:       string(cell.UID),
+			},
+			Hostname: testCellHostname,
+			LoopbackIPs: []netip.Addr{
+				netip.MustParseAddr("ffee:ffee::1"),
+			},
+			Prefixes: []netip.Prefix{
+				netip.MustParsePrefix("ffee:ffee::/64"),
+			},
+			Peers: []cellruntime.Peer{
+				{
+					Interface: &cellruntime.Interface{
+						Metadata: cellruntime.InterfaceMetadata{
+							Name: iface.Name,
+							UID:  string(iface.UID),
+						},
+						ID: iface.Name,
+					},
+					DHCPRelay: testDHCPRelay,
+				},
+			},
+		}
+		Eventually(func(g Gomega) {
 			fakeCellRuntime.RLock()
 			defer fakeCellRuntime.RUnlock()
-
-			desiredCfg := &cellruntime.CellConfig{
-				Metadata: cellruntime.CellMetadata{
-					Namespace: cell.Namespace,
-					Name:      cell.Name,
-					UID:       string(cell.UID),
-				},
-				Hostname: "host.example.org",
-				LoopbackIPs: []netip.Addr{
-					netip.MustParseAddr("ffee:ffee::1"),
-				},
-				Prefixes: []netip.Prefix{
-					netip.MustParsePrefix("ffee:ffee::/64"),
-				},
-				Peers: []cellruntime.Peer{
-					{
-						Interface: &cellruntime.Interface{
-							Metadata: cellruntime.InterfaceMetadata{
-								Name: iface.Name,
-								UID:  string(iface.UID),
-							},
-							ID: iface.Name,
-						},
-						DHCPRelay: "dhcp.example.org",
-					},
-				},
-			}
-
 			g.Expect(fakeCellRuntime.Cells[node.Name]).To(HaveField("Config", desiredCfg))
-		}).To(Succeed())
+		}).Should(Succeed())
 
 		By("setting the fake cell status to active")
 		func() {
@@ -141,22 +142,59 @@ var _ = Describe("CellController", func() {
 		}()
 
 		By("waiting for the cell to be active")
-		Eventually(func(g Gomega) {
-			g.Expect(k8sClient.Get(ctx, cellKey, cell)).To(Succeed())
-			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellActive))
-		}).To(Succeed())
+		Eventually(Object(cell)).Should(HaveField("Status.Phase", Equal(v1alpha1.CellActive)))
 
 		By("deleting the cell")
 		Expect(k8sClient.Delete(ctx, cell)).To(Succeed())
 
 		By("waiting for the cell to be gone and the runtime to be reset")
+		Eventually(Get(cell)).Should(Satisfy(apierrors.IsNotFound))
 		Eventually(func(g Gomega) {
-			g.Expect(k8sClient.Get(ctx, cellKey, cell)).To(Satisfy(apierrors.IsNotFound))
-
 			fakeCellRuntime.RLock()
 			defer fakeCellRuntime.RUnlock()
 			g.Expect(fakeCellRuntime.Cells[node.Name]).To(BeNil())
 		}).Should(Succeed())
+	})
+
+	It("marks a previously-Active cell Degraded when readiness regresses", func(ctx SpecContext) {
+		By("creating a cell")
+		cell := &v1alpha1.Cell{
+			ObjectMeta: metav1.ObjectMeta{Namespace: defaultNamespace, GenerateName: "cell-degraded-"},
+			Spec: v1alpha1.CellSpec{
+				NodeRef:  v1alpha1.LocalObjectReference{Name: node.Name},
+				Hostname: testCellHostname,
+				IPs:      []string{"ffee:ffee::1"},
+				Prefixes: []string{"ffee:ffee::/64"},
+				Peers: []v1alpha1.Peer{
+					{InterfaceRef: v1alpha1.LocalObjectReference{Name: iface.Name}, DHCPRelay: "dhcp.example.org"},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, cell)).To(Succeed())
+		DeferCleanup(func(ctx context.Context) error {
+			return client.IgnoreNotFound(k8sClient.Delete(ctx, cell))
+		})
+
+		By("driving the cell to Active")
+		Eventually(func(g Gomega) {
+			fakeCellRuntime.Lock()
+			defer fakeCellRuntime.Unlock()
+			g.Expect(fakeCellRuntime.Cells[node.Name]).NotTo(BeNil())
+			fakeCellRuntime.Cells[node.Name].Status.Phase = cellruntime.CellPhaseActive
+		}).Should(Succeed())
+		Eventually(Object(cell)).Should(HaveField("Status.Phase", Equal(v1alpha1.CellActive)))
+
+		By("regressing readiness: runtime reports Created again")
+		func() {
+			fakeCellRuntime.Lock()
+			defer fakeCellRuntime.Unlock()
+			fakeCellRuntime.Cells[node.Name].Status.Phase = cellruntime.CellPhaseCreated
+		}()
+
+		By("expecting the cell to become Degraded, not Pending")
+		Eventually(Object(cell)).Should(HaveField("Status.Phase", Equal(v1alpha1.CellDegraded)))
+		// And never silently empty.
+		Expect(cell.Status.Phase).NotTo(BeEmpty())
 	})
 
 	It("reports when the requested Node is bound to another Cell", func(ctx SpecContext) {
@@ -167,14 +205,13 @@ var _ = Describe("CellController", func() {
 		Expect(k8sClient.Create(ctx, existingCell)).To(Succeed())
 		DeferCleanup(k8sClient.Delete, existingCell)
 
-		Eventually(func(g Gomega) {
-			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(node), node)).To(Succeed())
-			g.Expect(node.Spec.CellRef).To(Equal(&v1alpha1.NamespacedUIDReference{
+		Eventually(Object(node)).Should(
+			HaveField("Spec.CellRef", Equal(&v1alpha1.NamespacedUIDReference{
 				Namespace: existingCell.Namespace,
 				Name:      existingCell.Name,
 				UID:       existingCell.UID,
-			}))
-		}).Should(Succeed())
+			})),
+		)
 
 		cell := &v1alpha1.Cell{
 			ObjectMeta: metav1.ObjectMeta{Namespace: defaultNamespace, GenerateName: "waiting-cell-"},
@@ -183,14 +220,14 @@ var _ = Describe("CellController", func() {
 		Expect(k8sClient.Create(ctx, cell)).To(Succeed())
 		DeferCleanup(k8sClient.Delete, cell)
 
-		Eventually(func(g Gomega) {
-			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(cell), cell)).To(Succeed())
-			g.Expect(cell.Status.Phase).To(Equal(v1alpha1.CellPending))
-			g.Expect(meta.FindStatusCondition(cell.Status.Conditions, v1alpha1.CellConditionTypeBound)).To(And(
+		Eventually(Object(cell)).Should(SatisfyAll(
+			HaveField("Status.Phase", Equal(v1alpha1.CellPending)),
+			HaveField("Status.Conditions", ContainElement(SatisfyAll(
+				HaveField("Type", v1alpha1.CellConditionTypeBound),
 				HaveField("Status", metav1.ConditionFalse),
 				HaveField("Reason", "NodeAlreadyBound"),
-			))
-		}).Should(Succeed())
+			))),
+		))
 	})
 
 	It("should reject changing the cell node reference", func(ctx SpecContext) {

@@ -26,6 +26,7 @@ const (
 	ProviderName = "sonic"
 	doneFlagFile = "/etc/sonic/fabric-cell.done"
 	stateFile    = "/etc/sonic/fabric-cell.state"
+	bgpStateFile = "/etc/sonic/fabric-cell.bgp"
 	bootIDFile   = "/etc/sonic/fabric-cell.bootid"
 	scriptDir    = "/etc/sonic"
 )
@@ -342,6 +343,44 @@ func bgpEstablishedFromVtysh(ctx context.Context) (configured, established int, 
 		}
 	}
 	return configured, established, nil
+}
+
+// bgpEstablishedSetFromVtysh returns the set of BGP neighbors currently in the
+// Established state, keyed by the vtysh neighbor identifier (the interface name
+// for interface-based fabric peers, matching the names persisted by
+// ConfigDBRuntime.ApplyCell). Unlike the count-based bgpEstablishedFromVtysh,
+// this lets readiness verify that every EXPECTED neighbor is up, so an empty or
+// partial vtysh result during a reboot/reconverge reads as not-ready rather
+// than ready.
+//
+// A vtysh invocation failure (for example "failed to connect to any daemons"
+// while FRR is still starting after a reboot) is treated as "no neighbors
+// Established yet" — an empty set — rather than a hard error. Readiness then
+// reports the cell as still provisioning (Created) and retries, instead of the
+// Cell controller surfacing a noisy reconcile error on every poll. Returning an
+// empty set can only make a cell wait longer; it can never make an unready cell
+// look Active, because CellStatus requires every expected neighbor present.
+func bgpEstablishedSetFromVtysh(ctx context.Context) (map[string]bool, error) {
+	out, err := hostCommand(ctx, "vtysh", "-c", "show bgp neighbors json").Output()
+	if err != nil {
+		// FRR/vtysh not answering yet: no sessions are established.
+		return map[string]bool{}, nil
+	}
+	var neighbors map[string]struct {
+		BGPState string `json:"bgpState"`
+	}
+	if err := json.Unmarshal(out, &neighbors); err != nil {
+		// Unparseable output (e.g. a partial/empty response during startup):
+		// treat as no sessions established rather than a hard error.
+		return map[string]bool{}, nil
+	}
+	established := make(map[string]bool, len(neighbors))
+	for name, n := range neighbors {
+		if n.BGPState == "Established" {
+			established[name] = true
+		}
+	}
+	return established, nil
 }
 
 // readBootID returns the current kernel boot ID, used to detect whether the

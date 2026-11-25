@@ -17,6 +17,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	. "sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -25,7 +26,12 @@ import (
 const (
 	pollingInterval      = 50 * time.Millisecond
 	eventuallyTimeout    = 5 * time.Second
-	consistentlyDuration = 1 * time.Second
+	consistentlyDuration = 300 * time.Millisecond
+)
+
+const (
+	defaultNamespace = "default"
+	groupLabelKey    = "group"
 )
 
 var (
@@ -61,13 +67,26 @@ var _ = BeforeSuite(func() {
 
 	k8sClient, err = client.New(testConfig, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
+	Expect(k8sClient).NotTo(BeNil())
+
+	// set komega client
+	SetClient(k8sClient)
 
 	manager, err := ctrl.NewManager(testConfig, ctrl.Options{
 		Scheme:  scheme.Scheme,
 		Metrics: metricsserver.Options{BindAddress: "0"},
 	})
 	Expect(err).NotTo(HaveOccurred())
+	Expect(RegisterIndexFields(testCtx, manager.GetFieldIndexer())).To(Succeed())
 	Expect((&CellReconciler{Client: manager.GetClient()}).SetupWithManager(manager)).To(Succeed())
+	Expect((&CellConfigRolloutReconciler{
+		Client: manager.GetClient(),
+		Scheme: manager.GetScheme(),
+	}).SetupWithManager(manager)).To(Succeed())
+	Expect((&CellConfigInstanceReconciler{
+		Client: manager.GetClient(),
+		Scheme: manager.GetScheme(),
+	}).SetupWithManager(manager)).To(Succeed())
 
 	go func() {
 		defer GinkgoRecover()

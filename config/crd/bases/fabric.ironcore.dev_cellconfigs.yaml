@@ -1,0 +1,103 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: cellconfigs.fabric.ironcore.dev
+spec:
+  group: fabric.ironcore.dev
+  names:
+    kind: CellConfig
+    listKind: CellConfigList
+    plural: cellconfigs
+    shortNames:
+    - cc
+    singular: cellconfig
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.nodeRef.name
+      name: Node
+      type: string
+    - jsonPath: .spec.id
+      name: ID
+      type: string
+    - jsonPath: .spec.hostname
+      name: Hostname
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: CellConfig is the Schema for the cellconfigs API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired configuration of the cell
+            properties:
+              hostname:
+                description: hostname is the cell hostname.
+                type: string
+              id:
+                description: id is the cell identifier.
+                type: string
+              ips:
+                description: ips are the addresses assigned to the cell.
+                items:
+                  type: string
+                type: array
+              nodeRef:
+                description: nodeRef selects the Node this configuration targets.
+                properties:
+                  name:
+                    type: string
+                type: object
+              peers:
+                description: peers are the peering interfaces of the cell.
+                items:
+                  properties:
+                    dhcpRelay:
+                      type: string
+                    interfaceRef:
+                      properties:
+                        name:
+                          type: string
+                      type: object
+                  required:
+                  - interfaceRef
+                  type: object
+                type: array
+              prefixes:
+                description: prefixes are the prefixes advertised by the cell.
+                items:
+                  type: string
+                type: array
+            required:
+            - id
+            - nodeRef
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources: {}
