@@ -34,10 +34,11 @@ type NodeStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,shortName=fn
 // +kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.providerID`
 // +kubebuilder:printcolumn:name="Cell",type=string,JSONPath=`.spec.cellRef.name`
 // +kubebuilder:printcolumn:name="Cell Namespace",type=string,JSONPath=`.spec.cellRef.namespace`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // Node is the Schema for the nodes API
 type Node struct {

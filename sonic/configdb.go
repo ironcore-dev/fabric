@@ -28,11 +28,12 @@ type ConfigDBRuntime struct {
 	host hostOperations
 	// probe functions; swapped by tests
 	readBootID     func() (string, error)
-	bgpEstablished func(ctx context.Context) (configured, established int, err error)
+	bgpEstablished func(ctx context.Context) (established map[string]bool, err error)
 	ifaceUp        func(name string) (bool, error)
 	// path overrides for tests
 	doneFlagPath  string
 	stateFilePath string
+	bgpStatePath  string
 	bootIDPath    string
 }
 
@@ -45,10 +46,11 @@ func NewConfigDBRuntime(redisAddress string) *ConfigDBRuntime {
 func newConfigDBRuntime(db sonicconfigdb.DB, host hostOperations) *ConfigDBRuntime {
 	r := &ConfigDBRuntime{db: db, host: host}
 	r.readBootID = readBootID
-	r.bgpEstablished = bgpEstablishedFromVtysh
+	r.bgpEstablished = bgpEstablishedSetFromVtysh
 	r.ifaceUp = ifaceUpFromSysfs
 	r.doneFlagPath = doneFlagFile
 	r.stateFilePath = stateFile
+	r.bgpStatePath = bgpStateFile
 	r.bootIDPath = bootIDFile
 	return r
 }
@@ -125,6 +127,14 @@ func (r *ConfigDBRuntime) ApplyCell(ctx context.Context, _ string, cfg *cellrunt
 	if err := os.WriteFile(r.stateFilePath, []byte(strings.Join(vlans, "\n")), 0o644); err != nil {
 		return fmt.Errorf("writing state file: %w", err)
 	}
+	// Persist the expected BGP neighbor set (the fabric-facing interface peers)
+	// so CellStatus can require every one of them to be Established before
+	// reporting Active. Comparing against the expected set — rather than the
+	// live neighbor count — means a reboot/reconverge window where vtysh briefly
+	// reports zero or partial neighbors reads as not-ready instead of ready.
+	if err := os.WriteFile(r.bgpStatePath, []byte(strings.Join(desired.FabricPorts, "\n")), 0o644); err != nil {
+		return fmt.Errorf("writing BGP state file: %w", err)
+	}
 	bootID, err := r.readBootID()
 	if err != nil {
 		return fmt.Errorf("reading boot ID: %w", err)
@@ -160,6 +170,7 @@ func (r *ConfigDBRuntime) DeleteCell(ctx context.Context, node string) error {
 		return fmt.Errorf("clearing cell marker: %w", err)
 	}
 	_ = os.Remove(r.stateFilePath)
+	_ = os.Remove(r.bgpStatePath)
 	_ = os.Remove(r.bootIDPath)
 	if err := r.host.Reboot(ctx); err != nil {
 		return fmt.Errorf("rebooting switch: %w", err)
@@ -197,16 +208,30 @@ func (r *ConfigDBRuntime) CellStatus(ctx context.Context, node string) (*cellrun
 		return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
 	}
 
-	// Check BGP sessions: use the same counting approach as the script backend.
-	// If vtysh reports at least one configured neighbor but not all are
-	// Established, the switch is not ready yet. Zero configured neighbors
-	// (e.g. first switch provisioned before any peers exist) passes through.
-	configured, established, err := r.bgpEstablished(ctx)
+	// Check BGP sessions against the neighbors persisted at ApplyCell time. The
+	// cell is not ready until every expected neighbor is Established. A missing
+	// state file, or any expected neighbor not yet Established (including when
+	// vtysh reports none during a reboot/reconverge), reads as not-ready — so a
+	// cell cannot flip to Active before its fabric sessions have actually come
+	// back up.
+	if _, err := os.Stat(r.bgpStatePath); err != nil {
+		if os.IsNotExist(err) {
+			return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+		}
+		return nil, fmt.Errorf("checking BGP state file: %w", err)
+	}
+	expectedNeighbors, err := readStateFile(r.bgpStatePath)
+	if err != nil {
+		return nil, fmt.Errorf("reading BGP state file: %w", err)
+	}
+	established, err := r.bgpEstablished(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("checking BGP: %w", err)
 	}
-	if configured > 0 && established < configured {
-		return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+	for _, neighbor := range expectedNeighbors {
+		if !established[neighbor] {
+			return &cellruntime.CellStatus{Phase: cellruntime.CellPhaseCreated}, nil
+		}
 	}
 
 	// Check VLAN interfaces from the state file.

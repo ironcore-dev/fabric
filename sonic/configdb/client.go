@@ -65,16 +65,16 @@ var _ DB = (*Client)(nil)
 func New(address string) DB {
 	newClient := func(db int) *redis.Client {
 		return redis.NewClient(&redis.Options{
-			Addr:             address,
-			DB:               db,
-			DialTimeout:      30 * time.Second,
-			ReadTimeout:      5 * time.Second,
-			WriteTimeout:     5 * time.Second,
-			PoolTimeout:      10 * time.Second,
-			MaxRetries:       10,
-			MinRetryBackoff:  500 * time.Millisecond,
-			MaxRetryBackoff:  10 * time.Second,
-			DisableIndentity: true,
+			Addr:            address,
+			DB:              db,
+			DialTimeout:     30 * time.Second,
+			ReadTimeout:     5 * time.Second,
+			WriteTimeout:    5 * time.Second,
+			PoolTimeout:     10 * time.Second,
+			MaxRetries:      10,
+			MinRetryBackoff: 500 * time.Millisecond,
+			MaxRetryBackoff: 10 * time.Second,
+			DisableIdentity: true,
 		})
 	}
 	return &Client{config: newClient(configDBIndex), appl: newClient(applDBIndex)}

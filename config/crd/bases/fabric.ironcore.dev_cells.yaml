@@ -11,6 +11,8 @@ spec:
     kind: Cell
     listKind: CellList
     plural: cells
+    shortNames:
+    - ce
     singular: cell
   scope: Namespaced
   versions:
@@ -22,11 +24,14 @@ spec:
       name: ID
       type: string
     - jsonPath: .status.phase
-      name: State
+      name: Phase
       type: string
     - jsonPath: .status.conditions[?(@.type=="Bound")].status
       name: Bound
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:

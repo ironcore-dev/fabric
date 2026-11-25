@@ -3,4 +3,7 @@ resources:
 - fabric_v1alpha1_node.yaml
 - fabric_v1alpha1_interface.yaml
 - fabric_v1alpha1_cell.yaml
+- fabric_v1alpha1_cellconfig.yaml
+- fabric_v1alpha1_cellconfigrollout.yaml
+- fabric_v1alpha1_cellconfiginstance.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

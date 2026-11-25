@@ -5,6 +5,9 @@ resources:
 - bases/fabric.ironcore.dev_nodes.yaml
 - bases/fabric.ironcore.dev_interfaces.yaml
 - bases/fabric.ironcore.dev_cells.yaml
+- bases/fabric.ironcore.dev_cellconfigs.yaml
+- bases/fabric.ironcore.dev_cellconfiginstances.yaml
+- bases/fabric.ironcore.dev_cellconfigrollouts.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

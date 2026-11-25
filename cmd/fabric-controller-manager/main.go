@@ -55,8 +55,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx := ctrl.SetupSignalHandler()
+	if err := controller.RegisterIndexFields(ctx, mgr.GetFieldIndexer()); err != nil {
+		setupLog.Error(err, "Could not register index fields")
+		os.Exit(1)
+	}
+
 	if err := (&controller.CellReconciler{Client: mgr.GetClient()}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Could not set up Cell controller")
+		os.Exit(1)
+	}
+	if err := (&controller.CellConfigRolloutReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Could not set up CellConfigRollout controller")
+		os.Exit(1)
+	}
+	if err := (&controller.CellConfigInstanceReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Could not set up CellConfigInstance controller")
 		os.Exit(1)
 	}
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

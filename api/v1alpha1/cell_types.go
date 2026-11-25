@@ -28,10 +28,11 @@ type Peer struct {
 type CellPhase string
 
 const (
-	CellPending CellPhase = "Pending"
-	CellActive  CellPhase = "Active"
-	CellExpired CellPhase = "Expired"
-	CellFailed  CellPhase = "Failed"
+	CellPending  CellPhase = "Pending"
+	CellActive   CellPhase = "Active"
+	CellDegraded CellPhase = "Degraded"
+	CellExpired  CellPhase = "Expired"
+	CellFailed   CellPhase = "Failed"
 )
 
 const CellConditionTypeBound = "Bound"
@@ -56,12 +57,13 @@ type CellStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:resource
+// +kubebuilder:resource:shortName=ce
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.spec.nodeRef.name`
 // +kubebuilder:printcolumn:name="ID",type=string,JSONPath=`.spec.id`
-// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.phase`
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Bound",type=string,JSONPath=`.status.conditions[?(@.type=="Bound")].status`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // Cell is the Schema for the cells API
 type Cell struct {

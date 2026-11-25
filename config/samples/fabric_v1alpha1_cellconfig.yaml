@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and IronCore contributors
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: CellConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: fabric
+    app.kubernetes.io/managed-by: kustomize
+    kind: spine
+  name: my-cell-cfg
+spec:
+  nodeRef:
+    name: spine-node
+  id: "21"
+  hostname: spine-switch
+  ips:
+    - fd00:1234:5678:201::21
+  prefixes:
+    - fd00:1234:5678:201::/64
+  peers:
+    - interfaceRef:
+        name: spine-node-ethernet0
+    - interfaceRef:
+        name: spine-node-ethernet4

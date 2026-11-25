@@ -11,6 +11,8 @@ spec:
     kind: Node
     listKind: NodeList
     plural: nodes
+    shortNames:
+    - fn
     singular: node
   scope: Cluster
   versions:
@@ -24,6 +26,9 @@ spec:
     - jsonPath: .spec.cellRef.namespace
       name: Cell Namespace
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:

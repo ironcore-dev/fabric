@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and IronCore contributors
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: fabric.ironcore.dev/v1alpha1
+kind: CellConfigRollout
+metadata:
+  labels:
+    app.kubernetes.io/name: fabric
+    app.kubernetes.io/managed-by: kustomize
+    kind: spine
+  name: my-cell-rollout
+spec:
+  configSelector:
+    matchLabels:
+      kind: spine
+  revisionHistoryLimit: 2
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1

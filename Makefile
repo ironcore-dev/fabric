@@ -270,7 +270,7 @@ ENVTEST_K8S_VERSION ?= $(shell v='$(call gomodver,k8s.io/api)'; \
 ifneq ($(wildcard .custom-gcl.yml),)
 GOLANGCI_LINT_VERSION ?= $(shell sed -n 's/^version: //p' .custom-gcl.yml)
 else
-GOLANGCI_LINT_VERSION ?= v2.13.2
+GOLANGCI_LINT_VERSION ?= v2.15.0
 endif
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
